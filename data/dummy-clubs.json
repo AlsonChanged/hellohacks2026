@@ -1,0 +1,92 @@
+[
+  {
+    "Name": "Hack Night",
+    "Price": "Free",
+    "Date/Time": "2026-10-02T18:00:00-07:00",
+    "location": "ICICS X836",
+    "club": "UBC Computer Science Student Society",
+    "description": "An open evening for students to build projects, meet teammates, and get help from mentors. Pizza is provided while supplies last.",
+    "tags": ["technology", "hackathon", "networking", "free-food"]
+  },
+  {
+    "Name": "Science Week Kickoff",
+    "Price": "Free",
+    "Date/Time": "2026-10-05T12:00:00-07:00",
+    "location": "Abdul Ladha Science Student Centre",
+    "club": "UBC Science Undergraduate Society",
+    "description": "Kick off Science Week with student booths, games, music, and snacks.",
+    "tags": ["science", "social", "campus", "free-food"]
+  },
+  {
+    "Name": "Engineering Design Team Showcase",
+    "Price": "Free",
+    "Date/Time": "2026-10-07T17:30:00-07:00",
+    "location": "Engineering Student Centre",
+    "club": "UBC Engineering Undergraduate Society",
+    "description": "Meet UBC engineering design teams and learn how to join their upcoming projects and competitions.",
+    "tags": ["engineering", "design", "recruitment", "projects"]
+  },
+  {
+    "Name": "Commerce Coffee Chat",
+    "Price": "$5 CAD",
+    "Date/Time": "2026-10-09T16:00:00-07:00",
+    "location": "Henry Angus Building, CPA Hall",
+    "club": "UBC Commerce Undergraduate Society",
+    "description": "A casual networking event connecting students with alumni working in finance, marketing, and consulting.",
+    "tags": ["business", "networking", "careers", "coffee"]
+  },
+  {
+    "Name": "Outdoor Yoga Session",
+    "Price": "Free",
+    "Date/Time": "2026-10-12T10:00:00-07:00",
+    "location": "Main Mall Flagpole",
+    "club": "UBC Kinesiology Undergraduate Society",
+    "description": "A beginner-friendly outdoor yoga session. Participants should bring a mat and water.",
+    "tags": ["fitness", "wellness", "outdoors", "beginner-friendly"]
+  },
+  {
+    "Name": "Forest Futures Panel",
+    "Price": "Free",
+    "Date/Time": "2026-10-14T18:30:00-07:00",
+    "location": "Forest Sciences Centre 1005",
+    "club": "UBC Forestry Undergraduate Society",
+    "description": "Faculty and industry guests discuss sustainable forestry, conservation, and career pathways.",
+    "tags": ["forestry", "sustainability", "careers", "panel"]
+  },
+  {
+    "Name": "Food Systems Community Dinner",
+    "Price": "$8 CAD",
+    "Date/Time": "2026-10-16T18:00:00-07:00",
+    "location": "MacMillan Building Agora",
+    "club": "UBC Land and Food Systems Undergraduate Society",
+    "description": "A community dinner featuring locally sourced dishes and conversation about sustainable food systems.",
+    "tags": ["food", "sustainability", "community", "dinner"]
+  },
+  {
+    "Name": "Biology Research Mixer",
+    "Price": "Free",
+    "Date/Time": "2026-10-20T17:00:00-07:00",
+    "location": "Beaty Biodiversity Museum",
+    "club": "UBC Biological Sciences Society",
+    "description": "Connect with biology researchers and students to hear about laboratory and field research opportunities.",
+    "tags": ["biology", "research", "networking", "careers"]
+  },
+  {
+    "Name": "Chemistry Trivia Night",
+    "Price": "$3 CAD",
+    "Date/Time": "2026-10-22T19:00:00-07:00",
+    "location": "Chemistry Building D200",
+    "club": "UBC Chemistry Undergraduate Society",
+    "description": "Team-based chemistry and general science trivia with prizes for the top teams.",
+    "tags": ["chemistry", "trivia", "social", "prizes"]
+  },
+  {
+    "Name": "Stargazing and Telescope Night",
+    "Price": "Free",
+    "Date/Time": "2026-10-24T20:00:00-07:00",
+    "location": "Hennings Building Rooftop",
+    "club": "UBC Physics Society",
+    "description": "Observe planets and deep-sky objects through student-operated telescopes, weather permitting.",
+    "tags": ["physics", "astronomy", "stargazing", "outdoors"]
+  }
+]

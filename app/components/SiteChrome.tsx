@@ -18,8 +18,8 @@ export function SiteHeader({ active, savedCount = 0 }: { active: string; savedCo
 				<Link className={active === "Calendar" ? "nav-active" : ""} href="/calendar">
 					Calendar
 				</Link>
-				<a href="/#events">Map</a>
-				<a href="/#clubs">Clubs</a>
+				<Link href="/#events">Map</Link>
+				<Link href="/#clubs">Clubs</Link>
 			</nav>
 			<div className="header-actions">
 				<button className="saved-button" onClick={() => window.alert(savedCount ? `You have ${savedCount} saved event${savedCount === 1 ? "" : "s"}.` : "Save an event to keep it here for later.")}>
