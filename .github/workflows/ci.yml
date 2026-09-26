@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  app:
+  frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,9 +17,29 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: hellohacks2026/package-lock.json
       - run: npm ci
+        working-directory: hellohacks2026
       - run: npm run lint
+        working-directory: hellohacks2026
       - run: npm run build
+        working-directory: hellohacks2026
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm run lint
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
 
   database:
     runs-on: ubuntu-latest
@@ -29,5 +49,8 @@ jobs:
         with:
           version: latest
       - run: supabase start
+        working-directory: backend
       - run: supabase db reset
+        working-directory: backend
       - run: supabase db lint --level error
+        working-directory: backend

@@ -3,9 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 
 const [csvPath] = process.argv.slice(2);
 if (!csvPath) throw new Error("Usage: node scripts/import-clubs.mjs path/to/clubs.csv");
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+if (!url || !key) throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
 
 const parseLine = (line) => {
   const fields = [];
@@ -38,4 +38,3 @@ for (const [, name, instagram] of rows) {
   if (sourceError) throw sourceError;
 }
 console.log(`Imported ${rows.length} candidate rows.`);
-

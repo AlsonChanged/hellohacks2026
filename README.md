@@ -1,6 +1,11 @@
-# HelloHacks 2026 — club event backend
+# HelloHacks 2026
 
-Next.js + Supabase backend for turning university club Instagram posts into a searchable event cache.
+Frontend and backend for turning university club Instagram posts into a searchable event cache.
+
+```text
+hellohacks2026/  Next.js frontend
+backend/        Next.js API, Supabase schema, ingestion, and test data
+```
 
 ## What is implemented
 
@@ -15,10 +20,11 @@ Next.js + Supabase backend for turning university club Instagram posts into a se
 ## Set up Supabase
 
 1. Create a Supabase project and install the Supabase CLI if you do not already have it.
-2. Copy `.env.example` to `.env.local` and fill in the project URL, publishable key, service-role key, OpenAI API key, and a random `CRON_SECRET`.
+2. From `backend/`, copy `.env.example` to `.env.local` and fill in the project URL, service-role key, OpenAI API key, and a random `CRON_SECRET`.
 3. Link and apply the migration:
 
    ```bash
+   cd backend
    npx supabase link --project-ref YOUR_PROJECT_REF
    npx supabase db push
    ```
@@ -27,7 +33,7 @@ Next.js + Supabase backend for turning university club Instagram posts into a se
 
    ```bash
    set -a; source .env.local; set +a
-   node scripts/import-clubs.mjs ../ubc_club_instagram_candidates.csv
+   node scripts/import-clubs.mjs data/ubc_club_instagram_candidates.csv
    ```
 
    Imported accounts start as `manual` sources. For accounts your Meta app is authorized to read, change the source provider to `instagram_graph` and set `external_account_id` to the Instagram professional account ID.
@@ -44,7 +50,7 @@ After deployment, teammates can use these endpoints without a local setup:
 
 ### Dummy club-event data
 
-`GET /api/v1/clubs` returns the temporary JSON fixture from `data/dummy-clubs.json`. Each record contains `Name`, `Price`, `Date/Time`, `location`, `club`, `description`, and `tags`. Replace this route with a Supabase query when the frontend is ready for live data.
+`GET /api/v1/clubs` returns the temporary JSON fixture from `backend/data/dummy-clubs.json`. Each record contains `Name`, `Price`, `Date/Time`, `location`, `club`, `description`, and `tags`. Replace this route with a Supabase query when the frontend is ready for live data.
 
 ### Read upcoming events
 
@@ -98,9 +104,15 @@ Instagram often does **not** contain every authoritative detail. Price, accessib
 
 The official Instagram Graph API is the supported automated path, but it requires a Meta app, an access token, and eligible/authorized professional accounts. Arbitrary public Instagram links should not be scraped by bypassing login or platform controls. Use the protected manual ingestion route for user-supplied links/captions that are outside your app's authorized accounts.
 
-## Local checks
+## Local development
 
 ```bash
+cd hellohacks2026
+npm ci
+npm run lint
+npm run build
+
+cd ../backend
 npm ci
 npm run lint
 npm run build
@@ -109,12 +121,13 @@ npm run build
 ## Push-to-preview setup
 
 The repository includes a GitHub Actions workflow that validates the Next.js app,
-starts a temporary local Supabase database, applies every migration, loads
-`supabase/seed.sql`, and lints the database on each pull request and push to
+validates both Next.js projects, starts a temporary local Supabase database,
+applies every migration, loads `backend/supabase/seed.sql`, and lints the database on each pull request and push to
 `main`. No production credentials are stored in GitHub for these checks.
 
-To give the team a public URL, import this GitHub repository into Vercel and add
-these server-side environment variables to the Vercel project:
+To give the team a public API URL, import this GitHub repository into Vercel,
+set the Vercel Root Directory to `backend`, and add these server-side environment
+variables to the backend project:
 
 ```text
 SUPABASE_URL
