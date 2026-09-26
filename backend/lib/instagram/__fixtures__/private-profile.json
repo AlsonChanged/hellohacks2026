@@ -1,0 +1,11 @@
+{
+  "data": {
+    "user": {
+      "username": "somePrivateClub",
+      "full_name": "Some Private Club",
+      "is_private": true,
+      "edge_followed_by": { "count": 500 },
+      "edge_owner_to_timeline_media": { "count": 0, "edges": [] }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "is_event": true,
+  "event": {
+    "title": "UBC Hackathon 2026",
+    "description": "24-hour hackathon open to all students.",
+    "start": { "year": 2026, "month": 10, "day": 10, "time": "09:00" },
+    "end": { "year": 2026, "month": 10, "day": 11, "time": "09:00" },
+    "timezone": null,
+    "location": "ICICS X050",
+    "registration_url": "bit.ly/ubchacks",
+    "organization": "UBC Game Dev",
+    "price_label": "Free",
+    "is_free": true,
+    "free_food": true,
+    "tags": ["hackathon", "coding"]
+  },
+  "confidence": 0.92,
+  "evidence": ["Caption: \"Save the date: Hackathon October 10\"", "Poster shows 9AM, ICICS X050"]
+}

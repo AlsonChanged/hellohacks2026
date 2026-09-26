@@ -11,19 +11,20 @@ on conflict (id) do update set
   website_url = excluded.website_url,
   follower_count = excluded.follower_count;
 
-insert into public.event_sources (id, club_id, provider, handle, enabled, next_sync_at)
+insert into public.event_sources (id, club_id, provider, handle, profile_url, enabled, next_sync_at)
 values
-  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'manual', 'ubcbuilders', false, '2099-01-01T00:00:00Z'),
-  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'manual', 'campusfoodies', false, '2099-01-01T00:00:00Z')
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'manual', 'ubcbuilders', 'https://www.instagram.com/ubcbuilders/', false, '2099-01-01T00:00:00Z'),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'manual', 'campusfoodies', 'https://www.instagram.com/campusfoodies/', false, '2099-01-01T00:00:00Z')
 on conflict (id) do update set
   club_id = excluded.club_id,
   handle = excluded.handle,
+  profile_url = excluded.profile_url,
   enabled = excluded.enabled,
   next_sync_at = excluded.next_sync_at;
 
 insert into public.source_items (
   id, source_id, provider, external_id, canonical_url, caption,
-  published_at, content_hash, raw_payload
+  published_at, content_hash, raw_payload, processing_status
 )
 values
   (
@@ -31,14 +32,14 @@ values
     '20000000-0000-4000-8000-000000000001',
     'manual', 'demo-build-night', 'https://example.com/events/build-night',
     'Build Night: meet other makers and ship a tiny project.',
-    '2098-09-20T18:00:00Z', 'seed-build-night-v1', '{"seed": true}'::jsonb
+    '2098-09-20T18:00:00Z', 'seed-build-night-v1', '{"seed": true}'::jsonb, 'processed'
   ),
   (
     '30000000-0000-4000-8000-000000000002',
     '20000000-0000-4000-8000-000000000002',
     'manual', 'demo-pizza-social', 'https://example.com/events/pizza-social',
     'Free pizza and a casual club fair.',
-    '2098-09-21T19:00:00Z', 'seed-pizza-social-v1', '{"seed": true}'::jsonb
+    '2098-09-21T19:00:00Z', 'seed-pizza-social-v1', '{"seed": true}'::jsonb, 'processed'
   )
 on conflict (id) do update set
   caption = excluded.caption,

@@ -50,6 +50,8 @@ for (const [index, event] of events.entries()) {
         published_at: event["Date/Time"],
         content_hash: hash,
         raw_payload: event,
+        // Fixture posts are already extracted; keep them out of the Gemini queue.
+        processing_status: "processed",
         last_seen_at: new Date().toISOString(),
       },
       { onConflict: "provider,external_id" },

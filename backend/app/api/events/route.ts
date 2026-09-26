@@ -1,21 +1,39 @@
 import { NextRequest } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { z } from "zod";
+import { listPublishedEvents } from "@/lib/db/repositories/events";
+import { jsonError, withErrorHandling } from "@/lib/http";
+
+const querySchema = z.object({
+  start: z.string().datetime({ offset: true }).optional(),
+  end: z.string().datetime({ offset: true }).optional(),
+  organization: z.string().min(1).optional(),
+  tag: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
-  const limit = Math.min(Math.max(Number(params.get("limit")) || 50, 1), 100);
-  const from = params.get("from") ?? new Date().toISOString();
-  const db = createAdminClient();
-  let query = db
-    .from("events")
-    .select("id,name,price_label,price_cents,is_free,starts_at,ends_at,timezone,location,description,tags,free_food,popularity_score,source_url,clubs(name,instagram_handle,follower_count)")
-    .eq("status", "published")
-    .gte("starts_at", from)
-    .order("starts_at")
-    .limit(limit);
-  if (params.get("tag")) query = query.contains("tags", [params.get("tag")!]);
-  const { data, error } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ events: data });
-}
+  return withErrorHandling(async () => {
+    const params = request.nextUrl.searchParams;
+    const parsed = querySchema.safeParse({
+      // `from` is kept as a backward-compatible alias for `start`.
+      start: params.get("start") ?? params.get("from") ?? undefined,
+      end: params.get("end") ?? undefined,
+      organization: params.get("organization") ?? undefined,
+      tag: params.get("tag") ?? undefined,
+      limit: params.get("limit") ?? undefined,
+    });
+    if (!parsed.success) return jsonError(400, "Invalid query parameters");
 
+    const start = parsed.data.start ?? new Date(Date.now() - SIX_HOURS_MS).toISOString();
+    const events = await listPublishedEvents({
+      start,
+      end: parsed.data.end,
+      organization: parsed.data.organization,
+      tag: parsed.data.tag,
+      limit: parsed.data.limit,
+    });
+    return Response.json({ events });
+  });
+}

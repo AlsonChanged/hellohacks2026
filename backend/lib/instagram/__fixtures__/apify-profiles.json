@@ -1,0 +1,30 @@
+[
+  {
+    "inputUrl": "https://www.instagram.com/ubcgamedev",
+    "id": "111",
+    "username": "ubcgamedev",
+    "fullName": " UBC Game Dev ",
+    "followersCount": 1250,
+    "private": false,
+    "latestPosts": [
+      {
+        "id": "900", "type": "Image", "shortCode": "OLDPIN", "caption": "Welcome to our club!",
+        "url": "https://www.instagram.com/p/OLDPIN/", "displayUrl": "https://cdn.example/old.jpg", "images": [],
+        "timestamp": "2023-01-01T00:00:00.000Z", "isPinned": true, "childPosts": []
+      },
+      {
+        "id": "902", "type": "Sidecar", "shortCode": "CAROUSEL", "caption": "Game jam this Friday 6pm!",
+        "url": "https://www.instagram.com/p/CAROUSEL/", "displayUrl": "https://cdn.example/c1.jpg",
+        "images": ["https://cdn.example/c1.jpg", "https://cdn.example/c2.jpg", "https://cdn.example/c1.jpg"],
+        "timestamp": "2026-09-20T18:00:00.000Z", "isPinned": false, "childPosts": []
+      },
+      {
+        "id": "901", "type": "Video", "shortCode": "REEL1", "caption": null,
+        "url": "https://www.instagram.com/reel/REEL1/", "displayUrl": "https://cdn.example/reel.jpg", "images": [],
+        "timestamp": "2026-08-01T12:00:00.000Z", "childPosts": []
+      }
+    ]
+  },
+  { "inputUrl": "https://www.instagram.com/secretclub", "username": "secretclub", "fullName": "Secret Club", "followersCount": 42, "private": true, "latestPosts": [] },
+  { "inputUrl": "https://www.instagram.com/ghostclub", "error": "not_found", "errorDescription": "Profile does not exist" }
+]

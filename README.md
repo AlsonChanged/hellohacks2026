@@ -9,19 +9,45 @@ backend/        Next.js API, Supabase schema, ingestion, and test data
 
 ## What is implemented
 
-- A normalized Supabase schema for clubs, sources, raw posts, events, and event revision history.
-- Idempotent ingestion: unchanged posts are returned from the cache without another AI call.
-- Edit detection: a changed caption/media hash re-extracts the event and stores the previous event row in `event_revisions`.
-- Incremental Instagram Graph API sync: each account stores its newest media ID as a cursor and has its own refresh interval.
-- Structured AI extraction into name, price, date/time, location, club, description, tags, and free-food state.
-- A public upcoming-events endpoint and secret-protected ingestion/sync endpoints.
-- Row-level security: public clients can only read clubs and published upcoming events; writes use the server-only service role.
+```text
+Instagram profile → web scraper → account metadata (follower count, newest post, active?)
+                               → posts (source_items, status = pending)
+cron → process-pending → caption text → Gemini → Zod → normalize dates → dedupe → events
+```
 
-## Set up Supabase
+- **Accounts** (`event_sources`): handle, profile URL, display name, follower count (`null` when unknown, never 0), `most_recent_post_at` (the newest post's timestamp, not the scrape time), `is_active`, and `scrape_status` (`pending | success | private | not_found | error`).
+- **Active** means the newest post is strictly less than six *calendar* months old. It is recalculated only after a successful scrape, so an account that couldn't be scraped keeps its last known state and isn't marked inactive. Inactive accounts are still rechecked daily.
+- **Posts** (`source_items`): re-scraping is idempotent. Instagram's signed media URLs change on every request, so they're refreshed but kept out of the content hash. A post whose caption is edited goes back to `pending` and is extracted again.
+- **Gemini** reads the caption text only (no images) and returns structured output. Posts with no caption are marked `skipped`. Details that appear only on a poster image aren't seen, so those events come back without a date and are held as `needs_review`. Malformed output never reaches the `events` table. Each post is sent to Gemini at most 3 times, and the result is stored in `ai_result`.
+- **Publishing**: an event is `published` when confidence ≥ 0.7 and a start date is known. Otherwise it's `needs_review`, and the public API won't show it.
+- Row-level security: public clients can only read clubs and published upcoming events. All writes use the server-only service role.
 
-1. Create a Supabase project and install the Supabase CLI if you do not already have it.
-2. From `backend/`, copy `.env.example` to `.env.local` and fill in the project URL, service-role key, OpenAI API key, and a random `CRON_SECRET`.
-3. Link and apply the migration:
+### Date rules
+
+Gemini returns dates as parts (`year | null`, month, day, `HH:MM | null`). The backend turns them into instants:
+
+- Times are local to `America/Vancouver`, unless the post names a zone. PST/PDT/Pacific all map to Vancouver.
+- **Missing year:** the anchor is the post's local date (or today, if the post time is unknown). The event gets the earliest year in which the date falls on or after anchor − 7 days. A Dec 28 post about "Jan 5" means next January. A post about something 3 days ago keeps the current year.
+- **No time given:** `starts_at` is local midnight and `has_start_time = false`.
+- **End before start on the same day:** the event is treated as running past midnight. Any other end-before-start is rejected.
+
+### Deduplication
+
+When several posts advertise one event, `source_items.event_id` links them all to that event. A new event from the same club on the same local date is treated as a duplicate when either:
+- its normalized title matches strongly: exact, token Jaccard ≥ 0.7, or one title's words contain the other's; or
+- the title match is weaker (Jaccard 0.5–0.7) *and* both posts name an overlapping location.
+
+Merging only fills fields that are empty. It never overwrites a known start time.
+
+## Set up
+
+1. Create a Supabase project and install the Supabase CLI.
+2. In `backend/`, copy `.env.example` to `.env.local` and fill it in:
+   - **Supabase:** `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+   - **Gemini:** either `GEMINI_API_KEY` (Google AI Studio), or `GOOGLE_CLOUD_PROJECT` + `GOOGLE_CLOUD_LOCATION` for Vertex AI (run `gcloud auth application-default login` locally).
+   - **`CRON_SECRET`:** a long random value.
+   - **`INSTAGRAM_SESSION_ID`:** strongly recommended (see below).
+3. Apply the migrations:
 
    ```bash
    cd backend
@@ -29,80 +55,53 @@ backend/        Next.js API, Supabase schema, ingestion, and test data
    npx supabase db push
    ```
 
-4. Import the prepared club list from the project parent directory:
+4. Import the prepared club list:
 
    ```bash
    set -a; source .env.local; set +a
    node scripts/import-clubs.mjs data/ubc_club_instagram_candidates.csv
    ```
 
-   Imported accounts start as `manual` sources. For accounts your Meta app is authorized to read, change the source provider to `instagram_graph` and set `external_account_id` to the Instagram professional account ID.
+5. Deploy, then adapt and run `supabase/cron.example.sql` in the Supabase SQL editor. It sets up two jobs:
+   - `scrape-all` every 30 minutes (only accounts whose `next_sync_at` is due are scraped, 5 per call)
+   - `process-pending` every 5 minutes
 
-5. Deploy the app, then adapt and run `supabase/cron.example.sql` in the Supabase SQL editor. It invokes the protected sync endpoint every 15 minutes; each source is actually processed only when its own `next_sync_at` is due.
+### Instagram scraping
+
+The scraper is chosen by environment:
+
+- **Apify (recommended):** set `APIFY_TOKEN`. This runs [`apify/instagram-profile-scraper`](https://apify.com/apify/instagram-profile-scraper) on Apify's servers, so your IP is never rate-limited.
+  - One actor run covers a whole `scrape-all` batch (10 accounts).
+  - It's billed per profile, about $0.0026 each on the free plan.
+  - With 190 accounts, one pass costs about $0.50. Scraping every account daily costs about $15/month; every 6 hours costs about $60/month. Set `event_sources.sync_interval_minutes` to control how often.
+- **Direct web endpoint (fallback):** used when `APIFY_TOKEN` is empty. It calls Instagram's unofficial `web_profile_info` endpoint from this server. It's free but gets rate-limited per IP almost immediately, and may conflict with Instagram's terms of service. `INSTAGRAM_SESSION_ID` (a throwaway account's `sessionid` cookie) helps a little.
+
+Either way, only the ~12 newest posts per account are returned, and media URLs expire after a few days.
+
+**Failure handling:**
+- A failed scrape backs off per account: 30 min, 1 h, 2 h, … up to 24 h, never sooner than `Retry-After`. The count is in `event_sources.consecutive_failures` and resets on success.
+- A rate limit, bad Apify token or exhausted Apify credit stops the batch and backs off every account in it.
+- The web scraper also retries 429/5xx/network errors up to 3 times, with about 2s then 4s waits.
 
 ## API
 
-After deployment, teammates can use these endpoints without a local setup:
+Routes marked 🔒 require `Authorization: Bearer <CRON_SECRET>`.
 
-- `GET /api/health` — confirms the deployment is running.
-- `GET /api/v1/clubs` — returns a static fixture and does not require Supabase.
-- `GET /api/events` — returns the seeded events from Supabase.
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/api/health` | Liveness check |
+| POST 🔒 | `/api/accounts` | `{"username": "ubcgamedev"}`. Accepts a handle, `@handle`, or profile URL |
+| GET | `/api/accounts` | All accounts with follower count, newest post, `is_active`, `scrape_status` |
+| GET | `/api/accounts/:id` | One account |
+| POST 🔒 | `/api/accounts/:id/scrape` | Scrape metadata + recent posts now; Gemini processing continues in the background |
+| POST 🔒 | `/api/accounts/scrape-all` | Scrape due accounts (cron) |
+| POST 🔒 | `/api/posts/:id/process?force=1` | Run one post through Gemini (debugging) |
+| POST 🔒 | `/api/posts/process-pending?limit=10` | Process a batch of pending posts (cron) |
+| GET | `/api/events?start=&end=&organization=&tag=&limit=` | Published events. `start` defaults to 6 hours ago; `from` is accepted as an alias |
+| GET | `/api/events/:id` | One event plus every source post that advertised it |
+| GET | `/api/v1/clubs` | Static fixture from `data/dummy-clubs.json` (no Supabase needed) |
 
-### Dummy club-event data
-
-`GET /api/v1/clubs` returns the temporary JSON fixture from `backend/data/dummy-clubs.json`. Each record contains `Name`, `Price`, `Date/Time`, `location`, `club`, `description`, and `tags`. Replace this route with a Supabase query when the frontend is ready for live data.
-
-### Read upcoming events
-
-`GET /api/events?from=2026-09-26T00:00:00Z&tag=free-food&limit=50`
-
-The response is backed by Supabase. A page load never triggers Instagram scraping.
-
-### Ingest known posts
-
-`POST /api/ingest` with `Authorization: Bearer <CRON_SECRET>`:
-
-```json
-{
-  "items": [
-    {
-      "instagramUrl": "https://www.instagram.com/p/POST_ID/",
-      "caption": "Event caption text...",
-      "clubName": "UBC Example Club",
-      "clubHandle": "ubcexample",
-      "externalId": "POST_ID",
-      "postedAt": "2026-09-26T18:00:00Z",
-      "mediaUrl": "https://temporary-authorized-media-url.example/image.jpg",
-      "followerCount": 1200
-    }
-  ]
-}
-```
-
-This route is the fallback for links the official Instagram API cannot access. Caption text is required; a temporary authorized image URL is optional and lets the model read poster text.
-
-### Scheduled account sync
-
-`POST /api/cron/sync-instagram` with the same bearer secret. It reads at most 10 due sources per invocation, fetches 25 posts at a time (up to 100 after a long outage), stops at the saved media-ID cursor, and advances the next-sync time.
-
-## Data and change behavior
-
-The client-facing event shape maps directly to:
-
-```text
-[name, price_label/price_cents, starts_at/ends_at, location,
- club, description, tags]
-```
-
-`source_items` keeps the original caption, URL, media URL, provider ID, timestamps, payload, and content hash. If the same content is seen again it only updates `last_seen_at`. If the content changes, the event is updated and the database trigger records both old and new rows in `event_revisions`. Events without a reliable date are saved as `needs_review`, never silently published.
-
-Follower count is stored on the club and converted to `log10(followers + 1)` for a deliberately mild popularity score. This avoids giant clubs completely overwhelming smaller ones. Engagement can be added later if the authorized API exposes it.
-
-## Instagram and website coverage
-
-Instagram often does **not** contain every authoritative detail. Price, accessibility, registration status, room changes, cancellation notices, and long descriptions may only exist on a club website or ticketing page. Treat Instagram as discovery, keep `source_url` for provenance, and add website/calendar adapters as additional providers rather than letting AI guess missing fields.
-
-The official Instagram Graph API is the supported automated path, but it requires a Meta app, an access token, and eligible/authorized professional accounts. Arbitrary public Instagram links should not be scraped by bypassing login or platform controls. Use the protected manual ingestion route for user-supplied links/captions that are outside your app's authorized accounts.
+Popularity is `log10(followers + 1)`, which keeps giant clubs from overwhelming small ones.
 
 ## Local development
 
@@ -115,6 +114,8 @@ npm run build
 cd ../backend
 npm ci
 npm run lint
+npm run typecheck
+npm test
 npm run build
 ```
 
@@ -132,9 +133,9 @@ variables to the backend project:
 ```text
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
-OPENAI_API_KEY
-OPENAI_MODEL
-INSTAGRAM_ACCESS_TOKEN
+GEMINI_API_KEY          (or GOOGLE_CLOUD_PROJECT + GOOGLE_CLOUD_LOCATION)
+GEMINI_MODEL
+INSTAGRAM_SESSION_ID
 CRON_SECRET
 ```
 

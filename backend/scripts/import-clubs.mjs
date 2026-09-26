@@ -24,17 +24,20 @@ const parseLine = (line) => {
 
 const rows = (await readFile(csvPath, "utf8")).trim().split(/\r?\n/).slice(1).map(parseLine);
 const db = createClient(url, key, { auth: { persistSession: false } });
+let imported = 0;
 for (const [, name, instagram] of rows) {
-  const match = instagram.match(/instagram\.com\/([^/?#]+)/i);
-  if (!match) continue;
-  const handle = match[1].toLowerCase();
+  const match = instagram?.match(/instagram\.com\/([^/?#]+)/i);
+  const handle = match?.[1].toLowerCase();
+  if (!handle || !/^[a-z0-9._]{1,30}$/.test(handle)) continue;
   const { data: club, error } = await db.from("clubs")
     .upsert({ name, instagram_handle: handle }, { onConflict: "instagram_handle" })
     .select("id").single();
   if (error) throw error;
   const { error: sourceError } = await db.from("event_sources").upsert({
-    club_id: club.id, provider: "manual", handle,
-  }, { onConflict: "provider,handle" });
+    club_id: club.id, provider: "instagram_web", handle,
+    profile_url: `https://www.instagram.com/${handle}/`,
+  }, { onConflict: "handle" });
   if (sourceError) throw sourceError;
+  imported += 1;
 }
-console.log(`Imported ${rows.length} candidate rows.`);
+console.log(`Imported ${imported} of ${rows.length} candidate rows.`);

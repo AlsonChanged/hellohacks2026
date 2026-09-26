@@ -1,0 +1,46 @@
+{
+  "data": {
+    "user": {
+      "username": "UBCGameDev",
+      "full_name": "  UBC GameDev  ",
+      "is_private": false,
+      "edge_followed_by": { "count": "1.2K followers" },
+      "edge_owner_to_timeline_media": {
+        "count": 2,
+        "edges": [
+          {
+            "node": {
+              "id": "1001",
+              "shortcode": "OLDPINNED",
+              "taken_at_timestamp": 1577836800,
+              "is_video": false,
+              "display_url": "https://scontent.cdninstagram.com/old-pinned.jpg",
+              "pinned_for_users": [123456],
+              "edge_media_to_caption": {
+                "edges": [{ "node": { "text": "An old pinned post" } }]
+              }
+            }
+          },
+          {
+            "node": {
+              "id": "1002",
+              "shortcode": "CAROUSEL1",
+              "taken_at_timestamp": 1735689600,
+              "is_video": false,
+              "display_url": "https://scontent.cdninstagram.com/cover.jpg",
+              "edge_media_to_caption": {
+                "edges": [{ "node": { "text": "Game jam this weekend!" } }]
+              },
+              "edge_sidecar_to_children": {
+                "edges": [
+                  { "node": { "display_url": "https://scontent.cdninstagram.com/c1.jpg", "is_video": false } },
+                  { "node": { "display_url": "https://scontent.cdninstagram.com/c2.jpg", "is_video": true } }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
