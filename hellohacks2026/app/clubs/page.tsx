@@ -1,79 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 
 type Club = {
+	id: string;
 	name: string;
-	category: string;
-	initials: string;
-	description: string;
+	instagram_handle: string;
+	website_url: string | null;
+	follower_count: number | null;
 };
 
-const clubs: Club[] = [
-	{
-		name: "UBC Astronomy Club",
-		category: "Science",
-		initials: "AC",
-		description: "Stargazing nights, observatory tours, and accessible talks for everyone curious about the sky.",
-	},
-	{
-		name: "UBC Biology Students Society",
-		category: "Science",
-		initials: "BI",
-		description: "Field trips, research panels, peer support, and community for students across the life sciences.",
-	},
-	{
-		name: "UBC Visual Arts Collective",
-		category: "Arts",
-		initials: "VA",
-		description: "Open studios, gallery nights, critique circles, and playful ways to make art across disciplines.",
-	},
-	{
-		name: "UBC Future Founders",
-		category: "Career",
-		initials: "FF",
-		description: "Founder conversations, build weekends, and practical support for student-led ventures.",
-	},
-	{
-		name: "UBC Run Club",
-		category: "Sports",
-		initials: "RC",
-		description: "No-drop social runs, trail sessions, and race-day meetups for every pace and experience level.",
-	},
-	{
-		name: "UBC Chinese Students Association",
-		category: "Social",
-		initials: "CSA",
-		description: "Cultural celebrations, food socials, mentorship, and community events throughout the year.",
-	},
-	{
-		name: "UBC Film Society",
-		category: "Arts",
-		initials: "FS",
-		description: "Screenings, filmmaker Q&As, production workshops, and conversations for people who love cinema.",
-	},
-	{
-		name: "UBC Women in Science",
-		category: "Science",
-		initials: "WS",
-		description: "Mentorship, skill-building, and conversations with women working across STEM fields.",
-	},
-];
-
-const categories = ["All clubs", "Science", "Social", "Arts", "Career", "Sports"];
+function initials(name: string) {
+	return name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+}
 
 export default function ClubsPage() {
+	const [clubs, setClubs] = useState<Club[]>([]);
 	const [search, setSearch] = useState("");
-	const [category, setCategory] = useState("All clubs");
-	const filteredClubs = useMemo(
-		() => clubs.filter((club) => {
-			const searchText = `${club.name} ${club.description}`.toLowerCase();
-			return searchText.includes(search.toLowerCase())
-				&& (category === "All clubs" || category === club.category);
-		}),
-		[search, category],
-	);
+	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState<string | null>(null);
+
+	useEffect(() => {
+		fetch("/api/clubs", { cache: "no-store" })
+			.then(async (response) => {
+				const payload = await response.json() as { clubs?: Club[]; error?: string };
+				if (!response.ok) throw new Error(payload.error ?? `Could not load clubs (${response.status})`);
+				setClubs(payload.clubs ?? []);
+			})
+			.catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Could not load clubs"))
+			.finally(() => setLoading(false));
+	}, []);
+
+	const filteredClubs = useMemo(() => {
+		const term = search.trim().toLowerCase();
+		if (!term) return clubs;
+		return clubs.filter((club) => `${club.name} ${club.instagram_handle}`.toLowerCase().includes(term));
+	}, [clubs, search]);
 
 	return (
 		<>
@@ -84,14 +47,10 @@ export default function ClubsPage() {
 					<div className="clubs-intro-row">
 						<div>
 							<h1>UBC clubs, all in one place.</h1>
-							<p>
-								Browse the student groups behind campus events, see what they’re planning, and jump back to their Instagram for the latest.
-							</p>
+							<p>Browse UBC clubs and visit their websites or Instagram profiles to learn more.</p>
 						</div>
 						<div className="club-stats">
-							<strong>240+<small>ACTIVE CLUBS</small></strong>
-							<strong>87<small>UPCOMING EVENTS</small></strong>
-							<strong>16<small>CATEGORIES</small></strong>
+							<strong>{clubs.length}<small>CLUBS LISTED</small></strong>
 						</div>
 					</div>
 				</section>
@@ -107,56 +66,41 @@ export default function ClubsPage() {
 								onChange={(event) => setSearch(event.target.value)}
 							/>
 						</label>
-						<span className="placeholder-note">Club listings and Instagram links are placeholders.</span>
-					</div>
-					<div className="explore-row clubs-filters">
-						{categories.map((item) => (
-							<button
-								key={item}
-								className={`category-chip ${category === item ? "chip-selected" : ""}`}
-								aria-pressed={category === item}
-								onClick={() => setCategory(item)}
-							>
-								{item}
-							</button>
-						))}
+						<span className="placeholder-note">Club profiles and links are provided by the directory.</span>
 					</div>
 					<div className="section-title-row clubs-title-row">
 						<div>
-							<p className="micro-eyebrow coral-text">ACTIVE THIS WEEK</p>
-							<h2>Clubs to watch</h2>
+							<p className="micro-eyebrow coral-text">UBC CLUB DIRECTORY</p>
+							<h2>Explore clubs</h2>
 						</div>
 						<span>{filteredClubs.length} clubs</span>
 					</div>
-					{filteredClubs.length > 0 ? (
+					{loading && <div className="empty-state" role="status">Loading clubs…</div>}
+					{loadError && <div className="empty-state" role="alert">{loadError}</div>}
+					{!loading && !loadError && filteredClubs.length > 0 ? (
 						<div className="clubs-grid">
 							{filteredClubs.map((club) => (
-								<article className="club-card" key={club.name}>
+								<article className="club-card" key={club.id}>
 									<div className="club-card-heading">
-										<span className="club-monogram">{club.initials}</span>
+										<span className="club-monogram">{initials(club.name)}</span>
 										<div>
 											<h3>{club.name}</h3>
-											<span className={`category-tag category-${club.category.toLowerCase()}`}>
-												{club.category}
-											</span>
+											<span className="category-tag">UBC Club</span>
 										</div>
 									</div>
-									<p>{club.description}</p>
+									<p>{club.follower_count === null ? "UBC student club" : `${club.follower_count.toLocaleString()} Instagram followers`}</p>
 									<div className="club-card-footer">
-										<span>Sample club listing</span>
-										<a
-											href="https://www.instagram.com/"
-											target="_blank"
-											rel="noreferrer"
-										>
-											Instagram placeholder ↗
-										</a>
+										<span>{club.instagram_handle ? `@${club.instagram_handle}` : "Club profile"}</span>
+										<div>
+											{club.website_url && <a href={club.website_url} target="_blank" rel="noreferrer">Website ↗</a>}
+											{club.instagram_handle && <a href={`https://www.instagram.com/${encodeURIComponent(club.instagram_handle)}/`} target="_blank" rel="noreferrer">Instagram ↗</a>}
+										</div>
 									</div>
 								</article>
 							))}
 						</div>
-					) : (
-						<div className="empty-state">No clubs match that search.</div>
+					) : !loading && !loadError && (
+						<div className="empty-state">{clubs.length ? "No clubs match that search." : "No clubs are listed yet."}</div>
 					)}
 				</section>
 			</main>

@@ -1,18 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { categories, discoverEvents } from "../data/events";
+import { useEffect, useMemo, useState } from "react";
+import { categories, type EventInfo } from "../data/events";
+import { eventCategory, eventPrice, fetchEvents } from "../api/appApi";
 import { CategoryTag } from "./discover/CategoryTag";
 import { EventCard } from "./discover/EventCard";
 import { SearchBox } from "./discover/SearchBox";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 
 export default function DiscoverPage() {
+	const [events, setEvents] = useState<EventInfo[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [category, setCategory] = useState("All");
+	useEffect(() => {
+		const now = new Date();
+		const end = new Date(now);
+		end.setFullYear(end.getFullYear() + 1);
+		fetchEvents(now, end).then((rows) => setEvents(rows.map((event, index) => {
+			const start = event.starts_at ? new Date(event.starts_at) : null;
+			return {
+				title: event.name,
+				club: event.club?.name ?? event.organization ?? "UBC Club",
+				category: eventCategory(event),
+				date: start ? start.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : "Date TBA",
+				time: start && event.has_start_time ? start.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" }) : "Time TBA",
+				place: event.location ?? "Location TBA",
+				price: eventPrice(event),
+				description: event.description,
+				image: (index % 6) + 1,
+			};
+		}))).catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Could not load events")).finally(() => setLoading(false));
+	}, []);
 	const filteredEvents = useMemo(
-		() => discoverEvents.filter((event) => {
+		() => events.filter((event) => {
 			const searchableText = `${event.title} ${event.club} ${event.place}`.toLowerCase();
 			const matchesSearch = searchableText.includes(search.toLowerCase());
 			const matchesCategory = category === "All"
@@ -21,10 +44,12 @@ export default function DiscoverPage() {
 
 			return matchesSearch && matchesCategory;
 		}),
-		[search, category],
+		[events, search, category],
 	);
 	const featuredEvents = filteredEvents.slice(0, 2);
 	const upcomingEvents = filteredEvents.slice(2);
+	const todayLabel = new Date().toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+	const todayEvents = events.filter((event) => event.date === todayLabel);
 	const resetFilters = () => {
 		setCategory("All");
 		setSearch("");
@@ -39,10 +64,10 @@ export default function DiscoverPage() {
 					<div className="hero-orb" aria-hidden="true" />
 					<div className="hero-inner">
 						<div className="hero-copy">
-							<p className="eyebrow"><span className="eyebrow-dot" /> FRESH FROM 240+ CLUB FEEDS</p>
+							<p className="eyebrow"><span className="eyebrow-dot" /> UPCOMING UBC EVENTS</p>
 							<h1>What’s happening at UBC?</h1>
 							<p className="hero-description">
-								A clearer way to find the talks, workshops, socials, games, and small campus moments hiding in your Instagram feed.
+							A clearer way to find talks, workshops, socials, and campus events from UBC clubs and organizations.
 							</p>
 							<div className="hero-search-row">
 								<SearchBox value={search} onChange={setSearch} />
@@ -54,17 +79,17 @@ export default function DiscoverPage() {
 						<aside className="today-card" aria-label="Today on campus">
 							<div className="today-heading">
 								<div>
-									<span className="micro-eyebrow coral-text">TODAY · SATURDAY</span>
-									<h2>September 26</h2>
+									<span className="micro-eyebrow coral-text">TODAY</span>
+									<h2>{new Date().toLocaleDateString("en-CA", { month: "long", day: "numeric" })}</h2>
 								</div>
-								<span className="event-count">12 events</span>
+								<span className="event-count">{todayEvents.length} events</span>
 							</div>
 							<div className="happening-card">
-								<span className="live-label"><i aria-hidden="true" /> HAPPENING NOW</span>
-								<strong>Campus Garden Harvest</strong>
-								<span>UBC Farm · until 3:00 PM · Free</span>
+								<span className="live-label"><i aria-hidden="true" /> TODAY ON CAMPUS</span>
+								<strong>{todayEvents[0]?.title ?? "No events scheduled today"}</strong>
+								<span>{todayEvents[0] ? `${todayEvents[0].club} � ${todayEvents[0].time}` : "Check upcoming events below."}</span>
 							</div>
-							<p className="next-up">Next up: <b>Jazz Ensemble Open Rehearsal</b> at the Chan Centre, 4:30 PM.</p>
+							<p className="next-up">{todayEvents.length > 1 ? <>Also today: <b>{todayEvents[1].title}</b></> : "Published events from the UBC calendar."}</p>
 						</aside>
 					</div>
 				</section>
@@ -103,11 +128,13 @@ export default function DiscoverPage() {
 						</div>
 						<button className="text-link" onClick={resetFilters}>See all featured →</button>
 					</div>
-					{featuredEvents.length > 0 ? (
+					{loading && <div className="empty-state" role="status">Loading events…</div>}
+					{loadError && <div className="empty-state" role="alert">{loadError}</div>}
+					{!loading && !loadError && featuredEvents.length > 0 ? (
 						<div className="featured-grid">
 							{featuredEvents.map((event) => <EventCard key={event.title} event={event} />)}
 						</div>
-					) : (
+					) : !loading && !loadError && (
 						<div className="empty-state">No events found. Try another search or category.</div>
 					)}
 
@@ -116,13 +143,13 @@ export default function DiscoverPage() {
 							<p className="micro-eyebrow coral-text">COMING UP</p>
 							<h2>More around campus</h2>
 						</div>
-						<button className="text-link" onClick={resetFilters}>View all 87 events →</button>
+						<button className="text-link" onClick={resetFilters}>View all events →</button>
 					</div>
-					{upcomingEvents.length > 0 ? (
+					{!loading && !loadError && upcomingEvents.length > 0 ? (
 						<div className="upcoming-grid">
 							{upcomingEvents.map((event) => <EventCard compact key={event.title} event={event} />)}
 						</div>
-					) : (
+					) : !loading && !loadError && events.length > 0 && (
 						<div className="empty-state">No more events in this view yet.</div>
 					)}
 
@@ -130,7 +157,7 @@ export default function DiscoverPage() {
 						<div>
 							<h2>Made from the posts you might have missed.</h2>
 							<p>
-								We organize public event details from UBC club Instagram accounts, then link back to the source so you can confirm the latest updates.
+								We list published event details and link back to their source so you can confirm the latest updates.
 							</p>
 						</div>
 						<Link className="button button-light" href="/faq">How it works</Link>

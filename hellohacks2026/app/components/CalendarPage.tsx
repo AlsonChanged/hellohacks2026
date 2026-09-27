@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { eventCategory, eventPrice, fetchEvents } from "../api/appApi";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 
 type CalendarEvent = {
@@ -20,220 +21,7 @@ type CalendarEvent = {
 	image: number;
 };
 
-const events: CalendarEvent[] = [
-	{
-		id: "garden-harvest",
-		date: "2026-09-26",
-		startHour: 10,
-		startMinute: 0,
-		title: "Campus Garden Harvest",
-		club: "UBC Farm",
-		category: "Social",
-		color: "mint",
-		place: "UBC Farm",
-		price: "Free",
-		description: "Spend the afternoon harvesting seasonal produce and meeting the UBC Farm community.",
-		details: "Drop in any time before 3:00 PM. Wear clothes suitable for outdoor work. The organizers will provide tools and a short introduction to the garden.",
-		image: 5,
-	},
-	{
-		id: "jazz-rehearsal",
-		date: "2026-09-26",
-		startHour: 16,
-		startMinute: 30,
-		title: "Jazz Ensemble Open Rehearsal",
-		club: "UBC Jazz Ensemble",
-		category: "Arts",
-		color: "lavender",
-		place: "Chan Centre",
-		price: "Free",
-		description: "Listen in as the UBC Jazz Ensemble prepares for its upcoming performance.",
-		details: "Doors open ten minutes before the rehearsal. Seating is first come, first served. Please keep phones silent during the set.",
-		image: 2,
-	},
-	{
-		id: "yoga",
-		date: "2026-09-27",
-		startHour: 9,
-		startMinute: 0,
-		title: "Yoga on the Mall",
-		club: "UBC Recreation",
-		category: "Sports",
-		color: "mint",
-		place: "Main Mall, by the fountain",
-		price: "Free",
-		description: "Start Sunday with a relaxed, all-levels outdoor yoga class on the Main Mall.",
-		details: "Bring a yoga mat or towel and a water bottle. Mats are available in limited quantities. Arrive ten minutes early to check in with the recreation team.",
-		image: 4,
-	},
-	{
-		id: "coffee",
-		date: "2026-09-28",
-		startHour: 10,
-		startMinute: 0,
-		title: "Consulting Coffee Chats",
-		club: "UBC Future Founders",
-		category: "Career",
-		color: "gold",
-		place: "Henry Angus Building, Room 098",
-		price: "Free",
-		description: "Meet student consultants and learn how to prepare for your first case interview.",
-		details: "Drop in at any point during the session. Bring your questions about consulting clubs, recruiting timelines, and interview preparation.",
-		image: 3,
-	},
-	{
-		id: "board-games",
-		date: "2026-09-28",
-		startHour: 13,
-		startMinute: 0,
-		title: "Board Game Drop-in",
-		club: "UBC Games Club",
-		category: "Social",
-		color: "pink",
-		place: "AMS Nest, Room 2306",
-		price: "Free",
-		description: "Meet new people over a casual afternoon of tabletop games.",
-		details: "A selection of beginner-friendly and strategy games will be provided. You are welcome to bring a game or just join a table.",
-		image: 5,
-	},
-	{
-		id: "data-science",
-		date: "2026-09-29",
-		startHour: 11,
-		startMinute: 0,
-		title: "Data Science Workshop",
-		club: "UBC Data Science Club",
-		category: "Science",
-		color: "blue",
-		place: "Hennings Building, Room 201",
-		price: "Free",
-		description: "A hands-on introduction to exploring campus datasets with Python.",
-		details: "This beginner-friendly workshop includes a short presentation and guided practice. Bring a laptop with a browser; starter materials will be provided.",
-		image: 6,
-	},
-	{
-		id: "salish-sky",
-		date: "2026-09-29",
-		startHour: 19,
-		startMinute: 30,
-		title: "Stars, Stories & the Salish Sky",
-		club: "UBC Astronomy Club",
-		category: "Science",
-		color: "blue",
-		place: "Hennings 201 and the south lawn",
-		price: "Free",
-		description: "An evening of stargazing, Coast Salish sky knowledge, and hot chocolate on the south lawn.",
-		details: "Meet the astronomy club inside Hennings 201 before heading outdoors for telescope viewing. The event is weather dependent; check the club’s announcement for updates. Hot chocolate is provided while supplies last.",
-		image: 1,
-	},
-	{
-		id: "resume-lab",
-		date: "2026-09-30",
-		startHour: 10,
-		startMinute: 30,
-		title: "Resume Lab",
-		club: "UBC Career Centre",
-		category: "Career",
-		color: "gold",
-		place: "Brock Hall, Room 103",
-		price: "Free",
-		description: "Get practical feedback on your resume from peer advisors.",
-		details: "Bring a digital or printed copy of your current resume. Walk-in reviews are first come, first served, with short one-on-one feedback sessions.",
-		image: 3,
-	},
-	{
-		id: "salsa",
-		date: "2026-10-01",
-		startHour: 12,
-		startMinute: 0,
-		title: "Salsa for Beginners",
-		club: "UBC Dance Club",
-		category: "Social",
-		color: "pink",
-		place: "AMS Nest, Great Hall",
-		price: "Free",
-		description: "Learn a few salsa basics in a welcoming beginner session.",
-		details: "No partner or previous dance experience is needed. Wear comfortable shoes and arrive a few minutes early to join the warm-up.",
-		image: 5,
-	},
-	{
-		id: "gallery",
-		date: "2026-10-01",
-		startHour: 18,
-		startMinute: 0,
-		title: "Late Night at the Gallery",
-		club: "UBC Visual Arts Collective",
-		category: "Arts",
-		color: "lavender",
-		place: "Morris and Helen Belkin Art Gallery",
-		price: "$5",
-		description: "New student work, live ambient sets, printmaking demos, and an open courtyard reception.",
-		details: "Explore student exhibitions, join a short printmaking demonstration, and meet artists during the courtyard reception. Admission is five dollars at the door.",
-		image: 2,
-	},
-	{
-		id: "founders",
-		date: "2026-10-02",
-		startHour: 17,
-		startMinute: 30,
-		title: "Climate Tech Founders Forum",
-		club: "UBC Future Founders",
-		category: "Career",
-		color: "gold",
-		place: "Sauder, Henry Angus 098",
-		price: "Free",
-		description: "Three Vancouver founders share practical lessons on turning climate research into scalable ideas.",
-		details: "The panel is followed by audience questions and time to meet the speakers. Seating is limited, so arrive early.",
-		image: 3,
-	},
-	{
-		id: "run",
-		date: "2026-10-03",
-		startHour: 17,
-		startMinute: 0,
-		title: "Thunderbird Sunset Run",
-		club: "UBC Run Club",
-		category: "Sports",
-		color: "mint",
-		place: "Meet at The Nest",
-		price: "Free",
-		description: "An easy 5K social loop through Pacific Spirit Park with pace groups for every runner.",
-		details: "Choose a conversational pace group when you arrive. Wear visible layers for the evening and bring water. The route may change with weather conditions.",
-		image: 4,
-	},
-	{
-		id: "dumpling",
-		date: "2026-10-04",
-		startHour: 18,
-		startMinute: 30,
-		title: "Dumpling Social & Mahjong",
-		club: "UBC Chinese Students Association",
-		category: "Social",
-		color: "pink",
-		place: "AMS Nest 2306/09",
-		price: "$8",
-		description: "Fold dumplings, learn mahjong, and meet new friends. Vegetarian filling available.",
-		details: "Your ticket includes ingredients and a beginner mahjong lesson. Vegetarian filling is available; please ask the organizers about other dietary needs.",
-		image: 5,
-	},
-	{
-		id: "bioblitz",
-		date: "2026-10-05",
-		startHour: 9,
-		startMinute: 0,
-		title: "Marine Biodiversity BioBlitz",
-		club: "UBC Biology Students Society",
-		category: "Science",
-		color: "blue",
-		place: "Beaty Biodiversity Museum",
-		price: "Free",
-		description: "A guided species count with museum researchers and hands-on iNaturalist training.",
-		details: "Museum researchers will introduce the species count, then guide small groups through the collection and nearby outdoor areas. A phone with iNaturalist installed is helpful but not required.",
-		image: 6,
-	},
-];
-
-const today = "2026-09-26";
+const today = toDateKey(new Date());
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const categories = ["All categories", "Science", "Arts", "Career", "Social", "Sports"];
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -285,7 +73,7 @@ function EventDetailsDialog({ event, onClose }: { event: CalendarEvent; onClose:
 					<h3>About this event</h3>
 					<p>{event.description}</p>
 					<p>{event.details}</p>
-					<div className="modal-note">Event information is sample content for this prototype. Check with the organizer for updates.</div>
+					<div className="modal-note">Event information may change. Confirm details with the organizer before attending.</div>
 				</div>
 			</section>
 		</div>
@@ -293,18 +81,46 @@ function EventDetailsDialog({ event, onClose }: { event: CalendarEvent; onClose:
 }
 
 export default function CalendarPage() {
+	const [events, setEvents] = useState<CalendarEvent[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState<string | null>(null);
 	const [view, setView] = useState<"Week" | "Month">("Week");
 	const [selectedDate, setSelectedDate] = useState(today);
 	const [category, setCategory] = useState("All categories");
 	const [search, setSearch] = useState("");
 	const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 	const [dialogEventId, setDialogEventId] = useState<string | null>(null);
+	useEffect(() => {
+		const start = new Date();
+		const end = new Date(start);
+		end.setFullYear(end.getFullYear() + 1);
+		fetchEvents(start, end).then((rows) => setEvents(rows.flatMap((event, index) => {
+			if (!event.starts_at) return [];
+			const date = new Date(event.starts_at);
+			const category = eventCategory(event);
+			return [{
+				id: event.id,
+				date: toDateKey(date),
+				startHour: date.getHours(),
+				startMinute: date.getMinutes(),
+				title: event.name,
+				club: event.club?.name ?? event.organization ?? "UBC Club",
+				category,
+				color: ({ science: "blue", arts: "lavender", career: "gold", social: "pink", sports: "mint" } as Record<string, string>)[category.toLowerCase()] ?? "blue",
+				place: event.location ?? "Location TBA",
+				price: eventPrice(event),
+				description: event.description,
+				details: event.description,
+				image: (index % 6) + 1,
+			}];
+		}))).catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Could not load events")).finally(() => setLoading(false));
+	}, []);
 	const selected = new Date(`${selectedDate}T12:00:00`);
 	const visibleEvents = useMemo(() => events.filter((event) => {
 		const matchesCategory = category === "All categories" || event.category === category;
 		const matchesSearch = `${event.title} ${event.club} ${event.place}`.toLowerCase().includes(search.toLowerCase());
 		return matchesCategory && matchesSearch;
-	}), [category, search]);
+	}), [category, events, search]);
 	const selectedEvents = visibleEvents.filter((event) => event.date === selectedDate);
 	const hasEventsOnSelectedDate = events.some((event) => event.date === selectedDate);
 	const activeEvent = selectedEvents.find((event) => event.id === selectedEventId) ?? selectedEvents[0];
@@ -379,6 +195,8 @@ export default function CalendarPage() {
 					</div>
 				</div>
 
+				{loading && <p role="status">Loading events…</p>}
+				{loadError && <p role="alert" className="empty-state">{loadError}</p>}
 				<div className={`calendar-workspace calendar-${view.toLowerCase()}`}>
 					<section className={`calendar-grid calendar-grid-${view.toLowerCase()}`} aria-label={`${view} calendar`}>
 						<div className="calendar-weekday-row"><span className="calendar-time-gutter"/>{weekdays.map((day) => <span key={day}>{day}</span>)}</div>
@@ -428,7 +246,7 @@ export default function CalendarPage() {
 									<p className="detail-description">{activeEvent.description}</p>
 									<ul className="detail-facts"><li>{formatTime(activeEvent.startHour, activeEvent.startMinute)}</li><li>{activeEvent.place}</li><li>{activeEvent.price}</li></ul>
 									<button className="button button-primary" onClick={() => setDialogEventId(activeEvent.id)}>View details</button>
-									<small className="updated-note">Sample event · confirm details with the organizer.</small>
+							<small className="updated-note">Confirm event details with the organizer.</small>
 								</div>
 							</>
 						) : (
@@ -440,7 +258,7 @@ export default function CalendarPage() {
 						)}
 					</aside>
 				</div>
-				<p className="calendar-note">Dates and event information are sample content. Check with each organizer for updates.</p>
+				<p className="calendar-note">Check with each organizer for the latest event updates.</p>
 			</main>
 			<SiteFooter />
 			{modalEvent && <EventDetailsDialog event={modalEvent} onClose={() => setDialogEventId(null)} />}

@@ -99,11 +99,13 @@ Routes marked 🔒 require `Authorization: Bearer <CRON_SECRET>`.
 | POST 🔒 | `/api/posts/process-pending?limit=10` | Process a batch of pending posts (cron) |
 | GET | `/api/events?start=&end=&organization=&tag=&limit=` | Published events. `start` defaults to 6 hours ago; `from` is accepted as an alias |
 | GET | `/api/events/:id` | One event plus every source post that advertised it |
-| GET | `/api/v1/clubs` | Static fixture from `data/dummy-clubs.json` (no Supabase needed) |
+| GET | `/api/v1/clubs` | Club directory from the Supabase `clubs` table |
 
 Popularity is `log10(followers + 1)`, which keeps giant clubs from overwhelming small ones.
 
 ## Local development
+
+The frontend reads published events and club listings through same-origin `/api/events` and `/api/clubs` routes, which forward requests to the backend. They default to `http://localhost:3001` locally; set `BACKEND_API_URL` on the frontend deployment to the deployed backend URL.
 
 ```bash
 cd hellohacks2026

@@ -1,43 +1,41 @@
-const API_BASE = "http://localhost:3001";
-
-export type ClubEvent = {
-    eventName: string;
-    clubName: string;
-    description: string;
-    location: string;
-    time: Date;
-    price: number;
-    tags: string[];
+export type PublishedEvent = {
+	id: string;
+	name: string;
+	organization: string | null;
+	description: string;
+	starts_at: string | null;
+	ends_at: string | null;
+	has_start_time: boolean;
+	timezone: string;
+	location: string | null;
+	registration_url: string | null;
+	price_label: string | null;
+	price_cents: number | null;
+	is_free: boolean;
+	free_food: boolean;
+	tags: string[];
+	source_url: string;
+	club: { name: string; instagram_handle: string; follower_count: number | null } | null;
 };
 
-async function requestEvents(path: string): Promise<ClubEvent[]> {
-    const res = await fetch(`${API_BASE}/api/v1/${path}`);
-    if (!res.ok) {
-        throw new Error(`Failed to fetch events (${res.status} ${res.statusText})`);
-    }
-    return (await res.json()) as ClubEvent[];
+export async function fetchEvents(start: Date, end: Date): Promise<PublishedEvent[]> {
+	const query = new URLSearchParams({ start: start.toISOString(), end: end.toISOString(), limit: "100" });
+	const response = await fetch(`/api/events?${query}`, { cache: "no-store" });
+	if (!response.ok) {
+		const payload = await response.json().catch(() => null) as { error?: string } | null;
+		throw new Error(payload?.error ?? `Could not load events (${response.status})`);
+	}
+	const payload = await response.json() as { events?: PublishedEvent[] };
+	return payload.events ?? [];
 }
 
-export function fetchEvents(startDate: Date, endDate: Date): Promise<ClubEvent[]> {
-    const query = new URLSearchParams({
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-    });
-    return requestEvents(`?${query.toString()}`);
+export function eventCategory(event: PublishedEvent): string {
+	return event.tags[0] ?? "Campus";
 }
 
-export function fetchEventsByName(eventName: string): Promise<ClubEvent[]> {
-    return requestEvents(`?${new URLSearchParams({ eventName }).toString()}`);
-}
-
-export function fetchEventsByClub(clubName: string): Promise<ClubEvent[]> {
-    return requestEvents(`?${new URLSearchParams({ clubName }).toString()}`);
-}
-
-export function fetchEventsByTags(tags: string[]): Promise<ClubEvent[]> {
-    return requestEvents(`?${new URLSearchParams({ tags: tags.join(",") }).toString()}`);
-}
-
-export function fetchEventsByRange(range: Number): Promise<ClubEvent[]> {
-    return requestEvents(`?${new URLSearchParams({ range: String(range) }).toString()}`);
+export function eventPrice(event: PublishedEvent): string {
+	if (event.price_label) return event.price_label;
+	if (event.is_free) return "Free";
+	if (event.price_cents !== null) return `$${(event.price_cents / 100).toFixed(2)}`;
+	return "See details";
 }
