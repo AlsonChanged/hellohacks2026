@@ -114,3 +114,16 @@ export async function listPublishedEvents(params: ListPublishedEventsParams) {
   if (error) throw error;
   return data ?? [];
 }
+
+/** Public JSON feed with the event columns used by the frontend. */
+export async function listPublishedEventData() {
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("events")
+    .select("name,price_label,starts_at,ends_at,location,description,tags,free_food,popularity_score,source_url,organization")
+    .eq("status", "published")
+    .order("starts_at", { ascending: true })
+    // .limit(100);
+  if (error) throw error;
+  return data ?? [];
+}
