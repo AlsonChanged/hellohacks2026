@@ -91,29 +91,29 @@ export default function CalendarPage() {
 	const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 	const [dialogEventId, setDialogEventId] = useState<string | null>(null);
 	useEffect(() => {
-		const start = new Date();
-		const end = new Date(start);
-		end.setFullYear(end.getFullYear() + 1);
-		fetchEvents(start, end).then((rows) => setEvents(rows.flatMap((event, index) => {
-			if (!event.starts_at) return [];
-			const date = new Date(event.starts_at);
-			const category = eventCategory(event);
-			return [{
-				id: event.id,
-				date: toDateKey(date),
-				startHour: date.getHours(),
-				startMinute: date.getMinutes(),
-				title: event.name,
-				club: event.club?.name ?? event.organization ?? "UBC Club",
-				category,
-				color: ({ science: "blue", arts: "lavender", career: "gold", social: "pink", sports: "mint" } as Record<string, string>)[category.toLowerCase()] ?? "blue",
-				place: event.location ?? "Location TBA",
-				price: eventPrice(event),
-				description: event.description,
-				details: event.description,
-				image: (index % 6) + 1,
-			}];
-		}))).catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Could not load events")).finally(() => setLoading(false));
+		const params = new URLSearchParams(window.location.search);
+		const requestedEvent = params.get("event");
+		const requestedDate = params.get("date");
+		const requestedClub = params.get("club");
+		const matchedEvent = requestedEvent
+			? events.find((event) => event.title === requestedEvent || event.id === requestedEvent)
+			: requestedClub
+				? events.find((event) => event.club === requestedClub)
+				: undefined;
+
+		if (matchedEvent) {
+			setSelectedDate(matchedEvent.date);
+			setSelectedEventId(matchedEvent.id);
+			return;
+		}
+
+		if (requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+			setSelectedDate(requestedDate);
+		}
+
+		if (requestedClub) {
+			setSearch(requestedClub);
+		}
 	}, []);
 	const selected = new Date(`${selectedDate}T12:00:00`);
 	const visibleEvents = useMemo(() => events.filter((event) => {
@@ -123,6 +123,7 @@ export default function CalendarPage() {
 	}), [category, events, search]);
 	const selectedEvents = visibleEvents.filter((event) => event.date === selectedDate);
 	const hasEventsOnSelectedDate = events.some((event) => event.date === selectedDate);
+	const showEmptyState = selectedEvents.length === 0;
 	const activeEvent = selectedEvents.find((event) => event.id === selectedEventId) ?? selectedEvents[0];
 	const modalEvent = events.find((event) => event.id === dialogEventId);
 	const weekStart = startOfWeek(selected);
@@ -173,7 +174,7 @@ export default function CalendarPage() {
 				<div className="calendar-heading-row">
 					<div>
 						<p className="micro-eyebrow coral-text">{view === "Week" ? "UPCOMING EVENTS" : "PLAN AHEAD"}</p>
-						<h1>{view === "Week" ? "Campus calendar" : monthTitle}</h1>
+						<h1>{view === "Week" ? "This week" : monthTitle}</h1>
 					</div>
 					<div className="calendar-controls">
 						<button className="filter-button" onClick={() => selectDate(todayDate)}>Today</button>
@@ -190,7 +191,11 @@ export default function CalendarPage() {
 				<div className="calendar-filter-row">
 					<label className="search-box"><span className="search-icon" aria-hidden="true"/><input placeholder="Search events, clubs, or places" aria-label="Search calendar events" value={search} onChange={(event) => setSearch(event.target.value)}/></label>
 					<div className="filter-actions">
-						<label className="filter-button select-filter"><span>Category</span><select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
+						<label className="filter-button select-filter">
+							<select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)}>
+								{categories.map((item) => <option key={item}>{item}</option>)}
+							</select>
+						</label>
 						<button className="filter-button" onClick={() => { setCategory("All categories"); setSearch(""); }}>Clear filters</button>
 					</div>
 				</div>
@@ -218,20 +223,16 @@ export default function CalendarPage() {
 													<span>{event.title}</span>
 												</button>
 											))}
+											{dateKey === selectedDate && showEmptyState && (
+												<div className="calendar-empty-overlay" role="status">
+													<strong>{hasEventsOnSelectedDate ? "No matching events" : "No events scheduled"}</strong>
+												</div>
+											)}
 										</div>
 									</div>
 								);
 							})}
 						</div>
-						{selectedEvents.length === 0 && (
-							<div className="calendar-empty-overlay" role="status">
-								<div>
-									<strong>{hasEventsOnSelectedDate ? "No events match these filters" : "No events scheduled for this day"}</strong>
-									<span>{formatDate(selectedDate)}</span>
-									<button onClick={() => movePeriod(1)}>Browse upcoming dates</button>
-								</div>
-							</div>
-						)}
 					</section>
 
 					<aside className="calendar-event-detail">
