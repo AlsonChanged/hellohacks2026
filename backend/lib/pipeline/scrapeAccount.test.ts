@@ -63,6 +63,27 @@ beforeEach(() => {
 });
 
 describe("scrapeAccount", () => {
+  it("uses a preloaded claimed account without fetching it again", async () => {
+    const account = baseAccount();
+    const scraper = {
+      getAccount: vi.fn().mockResolvedValue({
+        username: account.handle,
+        profileUrl: account.profile_url,
+        displayName: null,
+        followerCount: null,
+        mostRecentPostAt: null,
+        isPrivate: true,
+        posts: [],
+        rawData: null,
+      }),
+    };
+
+    await scrapeAccount(account.id, { account, scraper, now: new Date("2026-09-26T00:00:00.000Z") });
+
+    expect(getAccount).not.toHaveBeenCalled();
+    expect(scraper.getAccount).toHaveBeenCalledWith(account.handle);
+  });
+
   it("writes computed is_active on success", async () => {
     const account = baseAccount();
     getAccount.mockResolvedValue(account);
@@ -203,12 +224,18 @@ describe("scrapeDueAccounts", () => {
   const ok = (id: string) => ({ account_id: id, username: id, scrape_status: "success" as const, follower_count: 1, most_recent_post_at: null, is_active: false, posts_found: 0, new_posts: 0 });
 
   it("stops the batch at the first rate limit", async () => {
-    claimDueAccounts.mockResolvedValue([baseAccount({ id: "a" }), baseAccount({ id: "b" }), baseAccount({ id: "c" })]);
-    const scrape = vi.fn(async (id: string) => (id === "b" ? { ...ok(id), scrape_status: "error" as const, rate_limited: true } : ok(id)));
+    const accounts = [baseAccount({ id: "a" }), baseAccount({ id: "b" }), baseAccount({ id: "c" })];
+    claimDueAccounts.mockResolvedValue(accounts);
+    const scrape = vi.fn(async (id: string, deps?: { account?: AccountRow }) => {
+      expect(deps?.account?.id).toBe(id);
+      return id === "b" ? { ...ok(id), scrape_status: "error" as const, rate_limited: true } : ok(id);
+    });
 
     const results = await scrapeDueAccounts(3, { scrape, sleep: async () => {}, scraper: sequential });
 
     expect(scrape.mock.calls.map((c) => c[0])).toEqual(["a", "b"]);
+    expect(scrape.mock.calls[0][1]).toMatchObject({ account: accounts[0] });
+    expect(scrape.mock.calls[1][1]).toMatchObject({ account: accounts[1] });
     expect(results).toHaveLength(2);
   });
 
@@ -243,7 +270,8 @@ describe("scrapeDueAccounts with a batch scraper", () => {
   });
 
   it("fetches all claimed accounts in one call and records each one", async () => {
-    claimDueAccounts.mockResolvedValue([baseAccount({ id: "a", handle: "alpha" }), baseAccount({ id: "b", handle: "beta" })]);
+    const accounts = [baseAccount({ id: "a", handle: "alpha" }), baseAccount({ id: "b", handle: "beta" })];
+    claimDueAccounts.mockResolvedValue(accounts);
     const missing = new ScrapeError("not_found", "gone");
     const getAccounts = vi.fn(async () => new Map<string, unknown>([["alpha", profile("alpha")], ["beta", missing]]));
     const scraper = { getAccount: vi.fn(), getAccounts };
@@ -258,19 +286,21 @@ describe("scrapeDueAccounts with a batch scraper", () => {
     expect(getAccounts).toHaveBeenCalledTimes(1);
     expect(getAccounts).toHaveBeenCalledWith(["alpha", "beta"]);
     expect(scraper.getAccount).not.toHaveBeenCalled();
+    expect(scrape.mock.calls[0][1]).toMatchObject({ account: accounts[0] });
+    expect(scrape.mock.calls[1][1]).toMatchObject({ account: accounts[1] });
     expect(seen.a).toMatchObject({ username: "alpha" });
     expect(seen.b).toBe(missing);
   });
 
   it("records a failed batch request against every account (so each backs off)", async () => {
     claimDueAccounts.mockResolvedValue([baseAccount({ id: "a", handle: "alpha" }), baseAccount({ id: "b", handle: "beta" })]);
-    getAccount.mockImplementation(async (id: string) => baseAccount({ id }));
     const failure = new ScrapeError("error", "Apify request failed (402): out of credit", undefined, true);
     const scraper = { getAccount: vi.fn(), getAccounts: vi.fn().mockRejectedValue(failure) };
 
     const results = await scrapeDueAccounts(10, { scraper: scraper as never });
 
     expect(recordScrapeFailure).toHaveBeenCalledTimes(2);
+    expect(getAccount).not.toHaveBeenCalled();
     expect(results.every((r) => r.rate_limited)).toBe(true);
   });
 });

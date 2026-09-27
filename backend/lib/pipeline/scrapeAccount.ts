@@ -3,7 +3,7 @@ import { isAccountActive } from "@/lib/utils/dates";
 import { backoffDelayMs, sleep } from "@/lib/utils/backoff";
 import { logger } from "@/lib/utils/logger";
 import { ScrapeError } from "@/lib/types";
-import type { InstagramAccount, InstagramAccountScraper, ScrapeStatus } from "@/lib/types";
+import type { AccountRow, InstagramAccount, InstagramAccountScraper, ScrapeStatus } from "@/lib/types";
 import {
   getAccount,
   claimDueAccounts,
@@ -38,11 +38,18 @@ export function failureBackoffMs(consecutiveFailures: number, retryAfterSeconds?
   return Math.max((retryAfterSeconds ?? 0) * 1000, backoffDelayMs(consecutiveFailures, FAILURE_BACKOFF));
 }
 
-export type ScrapeAccountDeps = { scraper?: InstagramAccountScraper; now?: Date };
+export type ScrapeAccountDeps = {
+  scraper?: InstagramAccountScraper;
+  now?: Date;
+  /** A row already returned by claimDueAccounts; avoids fetching it again. */
+  account?: AccountRow;
+};
 
 export async function scrapeAccount(accountId: string, deps: ScrapeAccountDeps = {}): Promise<ScrapeAccountResult> {
   const startedAt = Date.now();
-  const account = await getAccount(accountId); // throws NotFoundError -> route maps to 404
+  // Direct/debug requests only have an id and still perform the lookup. Batch paths
+  // pass the complete row returned atomically by claimDueAccounts.
+  const account = deps.account ?? await getAccount(accountId); // throws NotFoundError -> route maps to 404
   const scraper = deps.scraper ?? createScraper();
   const now = deps.now ?? new Date();
 
@@ -193,7 +200,7 @@ export async function scrapeDueAccounts(limit = 10, deps: ScrapeDueDeps = {}): P
     const account = due[i];
     let result: ScrapeAccountResult;
     try {
-      result = await scrape(account.id, { scraper });
+      result = await scrape(account.id, { scraper, account });
     } catch (err) {
       logger.error({ account_id: account.id, err }, "scrapeDueAccounts: account failed");
       result = {
@@ -250,7 +257,7 @@ async function scrapeDueBatch(
       },
     };
     try {
-      results.push(await scrape(account.id, { scraper: prefetched }));
+      results.push(await scrape(account.id, { scraper: prefetched, account }));
     } catch (err) {
       logger.error({ account_id: account.id, err }, "scrapeDueAccounts: account failed");
       results.push({

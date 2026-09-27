@@ -21,61 +21,29 @@ export async function upsertScrapedPosts(accountId: string, posts: ScrapedPost[]
   if (found === 0) return { found, inserted: 0 };
 
   const db = createAdminClient();
-  const externalIds = posts.map((p) => p.instagramPostId);
-  const { data: existingRows, error: existingErr } = await db
-    .from("source_items")
-    .select("id, external_id, content_hash")
-    .eq("provider", "instagram")
-    .in("external_id", externalIds);
-  if (existingErr) throw existingErr;
-
-  const existingByExternalId = new Map((existingRows ?? []).map((r) => [r.external_id as string, r]));
-  let inserted = 0;
-
-  for (const post of posts) {
-    const hash = computeContentHash(post.caption, post.postedAt);
-    const existing = existingByExternalId.get(post.instagramPostId);
+  const payload = posts.map((post) => ({
+    external_id: post.instagramPostId,
+    canonical_url: post.postUrl,
+    caption: post.caption,
+    media_urls: post.mediaUrls,
+    published_at: post.postedAt,
+    content_hash: computeContentHash(post.caption, post.postedAt),
+    raw_payload: post.rawData ?? {},
     // Extraction is text-only: a post without a caption has nothing to send to Gemini.
-    const hasContent = Boolean(post.caption?.trim());
+    processing_status: post.caption?.trim() ? "pending" : "skipped",
+  }));
 
-    if (!existing) {
-      const { error } = await db.from("source_items").insert({
-        source_id: accountId,
-        provider: "instagram",
-        external_id: post.instagramPostId,
-        canonical_url: post.postUrl,
-        caption: post.caption,
-        media_urls: post.mediaUrls,
-        published_at: post.postedAt,
-        content_hash: hash,
-        raw_payload: post.rawData ?? {},
-        processing_status: hasContent ? "pending" : "skipped",
-      });
-      if (error) throw error;
-      inserted += 1;
-      continue;
-    }
+  const { data, error } = await db.rpc("upsert_scraped_posts", {
+    p_source_id: accountId,
+    p_posts: payload,
+  });
+  if (error) throw error;
 
-    // Always refresh signed media URLs + raw payload; only re-queue for AI when the
-    // meaningful content (caption/postedAt) actually changed.
-    const update: Record<string, unknown> = {
-      media_urls: post.mediaUrls,
-      raw_payload: post.rawData ?? {},
-      last_seen_at: new Date().toISOString(),
-      canonical_url: post.postUrl,
-    };
-    if (existing.content_hash !== hash) {
-      update.caption = post.caption;
-      update.content_hash = hash;
-      update.processing_status = "pending";
-      update.processing_attempts = 0;
-      update.processing_error = null;
-    }
-    const { error } = await db.from("source_items").update(update).eq("id", existing.id);
-    if (error) throw error;
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result.inserted !== "number") {
+    throw new Error("upsert_scraped_posts returned an invalid result");
   }
-
-  return { found, inserted };
+  return { found, inserted: result.inserted };
 }
 
 export async function getPost(id: string): Promise<PostRow | null> {

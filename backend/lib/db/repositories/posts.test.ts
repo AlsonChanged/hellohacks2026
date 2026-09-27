@@ -1,22 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ScrapedPost } from "@/lib/types";
 
-const fromMock = vi.fn();
+const rpcMock = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ from: (...args: unknown[]) => fromMock(...args) }),
+  createAdminClient: () => ({ rpc: (...args: unknown[]) => rpcMock(...args) }),
 }));
-
-// Minimal thenable query-builder stub: every chain method is a spy returning `obj`
-// itself, so tests can both keep chaining and inspect what was passed to e.g. update().
-function chain(result: { data?: unknown; error?: unknown }) {
-  const obj: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "in", "insert", "update"]) {
-    obj[method] = vi.fn(() => obj);
-  }
-  (obj as { then: unknown }).then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
-    Promise.resolve(result).then(resolve, reject);
-  return obj as Record<string, ReturnType<typeof vi.fn>> & PromiseLike<unknown>;
-}
 
 const { computeContentHash, upsertScrapedPosts } = await import("./posts");
 
@@ -61,37 +49,36 @@ describe("computeContentHash", () => {
 describe("upsertScrapedPosts", () => {
   it("refreshes media/raw payload but does not re-queue when only the CDN URL changed", async () => {
     const post = scrapedPost({ mediaUrls: ["https://cdn.example.com/rotated-signed-url.jpg"] });
-    const stableHash = computeContentHash(post.caption, post.postedAt);
-    const selectChain = chain({ data: [{ id: "row-1", external_id: "123", content_hash: stableHash }], error: null });
-    const updateChain = chain({ error: null });
-    fromMock.mockReturnValueOnce(selectChain).mockReturnValueOnce(updateChain);
+    rpcMock.mockResolvedValue({ data: [{ found: 1, inserted: 0 }], error: null });
 
     const result = await upsertScrapedPosts("acct-1", [post]);
 
     expect(result).toEqual({ found: 1, inserted: 0 });
-    const updateArgs = updateChain.update.mock.calls[0][0] as Record<string, unknown>;
-    expect(updateArgs).toHaveProperty("media_urls", post.mediaUrls);
-    expect(updateArgs).not.toHaveProperty("processing_status");
-    expect(updateArgs).not.toHaveProperty("content_hash");
-    expect(updateArgs).not.toHaveProperty("caption");
+    expect(rpcMock).toHaveBeenCalledOnce();
+    expect(rpcMock.mock.calls[0][0]).toBe("upsert_scraped_posts");
+    expect(rpcMock.mock.calls[0][1]).toMatchObject({
+      p_source_id: "acct-1",
+      p_posts: [
+        {
+          external_id: "123",
+          media_urls: post.mediaUrls,
+          processing_status: "pending",
+        },
+      ],
+    });
   });
 
-  it("re-queues for processing when the caption changed", async () => {
+  it("sends the content fingerprint used by the RPC to detect changed captions", async () => {
     const post = scrapedPost({ caption: "Updated caption!" });
-    const staleHash = computeContentHash("Old caption", post.postedAt);
-    const selectChain = chain({ data: [{ id: "row-1", external_id: "123", content_hash: staleHash }], error: null });
-    const updateChain = chain({ error: null });
-    fromMock.mockReturnValueOnce(selectChain).mockReturnValueOnce(updateChain);
+    rpcMock.mockResolvedValue({ data: [{ found: 1, inserted: 0 }], error: null });
 
     const result = await upsertScrapedPosts("acct-1", [post]);
 
     expect(result).toEqual({ found: 1, inserted: 0 });
-    const updateArgs = updateChain.update.mock.calls[0][0] as Record<string, unknown>;
-    expect(updateArgs).toMatchObject({
+    expect(rpcMock.mock.calls[0][1].p_posts[0]).toMatchObject({
       caption: "Updated caption!",
+      content_hash: computeContentHash(post.caption, post.postedAt),
       processing_status: "pending",
-      processing_attempts: 0,
-      processing_error: null,
     });
   });
 
@@ -99,15 +86,18 @@ describe("upsertScrapedPosts", () => {
     const withContent = scrapedPost();
     // Media alone is not enough: extraction is text-only.
     const empty = scrapedPost({ instagramPostId: "999", caption: "   " });
-    const selectChain = chain({ data: [], error: null });
-    const insertChain1 = chain({ error: null });
-    const insertChain2 = chain({ error: null });
-    fromMock.mockReturnValueOnce(selectChain).mockReturnValueOnce(insertChain1).mockReturnValueOnce(insertChain2);
+    rpcMock.mockResolvedValue({ data: [{ found: 2, inserted: 2 }], error: null });
 
     const result = await upsertScrapedPosts("acct-1", [withContent, empty]);
 
     expect(result).toEqual({ found: 2, inserted: 2 });
-    expect(insertChain1.insert.mock.calls[0][0]).toMatchObject({ processing_status: "pending" });
-    expect(insertChain2.insert.mock.calls[0][0]).toMatchObject({ processing_status: "skipped" });
+    const payload = rpcMock.mock.calls[0][1].p_posts;
+    expect(payload[0]).toMatchObject({ processing_status: "pending" });
+    expect(payload[1]).toMatchObject({ processing_status: "skipped" });
+  });
+
+  it("does not call Supabase for an empty scrape", async () => {
+    await expect(upsertScrapedPosts("acct-1", [])).resolves.toEqual({ found: 0, inserted: 0 });
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 });
