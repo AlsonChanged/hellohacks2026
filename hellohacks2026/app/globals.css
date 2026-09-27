@@ -512,6 +512,8 @@ a {
 	height: 230px;
 	position: relative;
 	overflow: hidden;
+	background-position: center;
+	background-size: cover;
 }
 .event-image {
 	width: 100%;
@@ -916,6 +918,8 @@ a {
 }
 .detail-image-wrap {
 	height: 145px;
+	background-position: center;
+	background-size: cover;
 }
 .detail-image-wrap img {
 	width: 100%;
@@ -1637,6 +1641,8 @@ a {
 
 .modal-image {
 	height: 230px;
+	background-position: center;
+	background-size: cover;
 }
 
 .modal-image img {

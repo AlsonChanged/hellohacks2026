@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { eventCategory, eventPrice, fetchEvents } from "../api/appApi";
+import { eventCategory, eventPrice, fetchEventDetails, fetchEvents, type EventDetails } from "../api/appApi";
 import { SiteFooter, SiteHeader } from "./SiteChrome";
 
 type CalendarEvent = {
@@ -19,6 +19,7 @@ type CalendarEvent = {
 	description: string;
 	details: string;
 	image: number;
+	imageUrl: string | null;
 };
 
 const today = toDateKey(new Date());
@@ -51,6 +52,15 @@ function startOfWeek(date: Date) {
 }
 
 function EventDetailsDialog({ event, onClose }: { event: CalendarEvent; onClose: () => void }) {
+	const [details, setDetails] = useState<EventDetails | null>(null);
+	const [detailsError, setDetailsError] = useState<string | null>(null);
+	useEffect(() => {
+		let active = true;
+		fetchEventDetails(event.id)
+			.then((result) => { if (active) setDetails(result); })
+			.catch((error: unknown) => { if (active) setDetailsError(error instanceof Error ? error.message : "Could not load event links"); });
+		return () => { active = false; };
+	}, [event.id]);
 	useEffect(() => {
 		const onKeyDown = (keyboardEvent: KeyboardEvent) => {
 			if (keyboardEvent.key === "Escape") onClose();
@@ -63,7 +73,9 @@ function EventDetailsDialog({ event, onClose }: { event: CalendarEvent; onClose:
 		<div className="modal-backdrop" onClick={onClose}>
 			<section className="event-modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title" onClick={(eventClick) => eventClick.stopPropagation()}>
 				<button className="modal-close" aria-label="Close event details" onClick={onClose}>×</button>
-				<div className="modal-image"><Image src={`/event-photos/event-${event.image}.jpg`} alt={`Students at ${event.title}`} width={900} height={400}/></div>
+				<div className="modal-image" style={event.imageUrl ? { backgroundImage: `url(${JSON.stringify(event.imageUrl)})` } : undefined}>
+					{!event.imageUrl && <Image src={`/event-photos/event-${event.image}.jpg`} alt={`Students at ${event.title}`} width={900} height={400}/>}
+				</div>
 				<div className="modal-content">
 					<span className={`category-tag category-${event.category.toLowerCase()}`}>{event.category}</span>
 					<p className="micro-eyebrow coral-text">{formatDate(event.date)}</p>
@@ -72,7 +84,15 @@ function EventDetailsDialog({ event, onClose }: { event: CalendarEvent; onClose:
 					<div className="modal-facts"><span>{formatTime(event.startHour, event.startMinute)}</span><span>{event.place}</span><span>{event.price}</span></div>
 					<h3>About this event</h3>
 					<p>{event.description}</p>
-					<p>{event.details}</p>
+					{details?.registration_url && <p><a href={details.registration_url} target="_blank" rel="noreferrer">Register for this event ↗</a></p>}
+					<h3>Event source</h3>
+					{details ? (
+						<ul>
+							{[details.source_url, ...details.sources.map((source) => source.canonical_url)]
+								.filter((url, index, urls) => Boolean(url) && urls.indexOf(url) === index)
+								.map((url) => <li key={url}><a href={url} target="_blank" rel="noreferrer">View original announcement ↗</a></li>)}
+						</ul>
+					) : <p role={detailsError ? "alert" : "status"}>{detailsError ?? "Loading source links…"}</p>}
 					<div className="modal-note">Event information may change. Confirm details with the organizer before attending.</div>
 				</div>
 			</section>
@@ -91,29 +111,50 @@ export default function CalendarPage() {
 	const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 	const [dialogEventId, setDialogEventId] = useState<string | null>(null);
 	useEffect(() => {
-		const params = new URLSearchParams(window.location.search);
-		const requestedEvent = params.get("event");
-		const requestedDate = params.get("date");
-		const requestedClub = params.get("club");
-		const matchedEvent = requestedEvent
-			? events.find((event) => event.title === requestedEvent || event.id === requestedEvent)
-			: requestedClub
-				? events.find((event) => event.club === requestedClub)
-				: undefined;
-
-		if (matchedEvent) {
-			setSelectedDate(matchedEvent.date);
-			setSelectedEventId(matchedEvent.id);
-			return;
-		}
-
-		if (requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
-			setSelectedDate(requestedDate);
-		}
-
-		if (requestedClub) {
-			setSearch(requestedClub);
-		}
+		const start = new Date();
+		const end = new Date(start);
+		end.setFullYear(end.getFullYear() + 1);
+		fetchEvents(start, end)
+			.then((rows) => {
+				const mapped = rows.flatMap((event, index) => {
+					if (!event.starts_at) return [];
+					const date = new Date(event.starts_at);
+					const category = eventCategory(event);
+					return [{
+						id: event.id,
+						date: toDateKey(date),
+						startHour: date.getHours(),
+						startMinute: date.getMinutes(),
+						title: event.name,
+						club: event.club?.name ?? event.organization ?? "UBC Club",
+						category,
+						color: ({ science: "blue", arts: "lavender", career: "gold", social: "pink", sports: "mint" } as Record<string, string>)[category.toLowerCase()] ?? "blue",
+						place: event.location ?? "Location TBA",
+						price: eventPrice(event),
+						description: event.description,
+						details: event.description,
+						image: (index % 6) + 1,
+						imageUrl: event.image_url,
+					}];
+				});
+				setEvents(mapped);
+				const params = new URLSearchParams(window.location.search);
+				const requestedEvent = params.get("event");
+				const requestedDate = params.get("date");
+				const requestedClub = params.get("club");
+				const matchedEvent = requestedEvent
+					? mapped.find((event) => event.title === requestedEvent || event.id === requestedEvent)
+					: requestedClub ? mapped.find((event) => event.club === requestedClub) : undefined;
+				if (matchedEvent) {
+					setSelectedDate(matchedEvent.date);
+					setSelectedEventId(matchedEvent.id);
+				} else if (requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+					setSelectedDate(requestedDate);
+				}
+				if (requestedClub) setSearch(requestedClub);
+			})
+			.catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Could not load events"))
+			.finally(() => setLoading(false));
 	}, []);
 	const selected = new Date(`${selectedDate}T12:00:00`);
 	const visibleEvents = useMemo(() => events.filter((event) => {
@@ -238,7 +279,9 @@ export default function CalendarPage() {
 					<aside className="calendar-event-detail">
 						{activeEvent ? (
 							<>
-								<div className="detail-image-wrap"><Image src={`/event-photos/event-${activeEvent.image}.jpg`} alt={`Students at ${activeEvent.title}`} width={700} height={360}/></div>
+								<div className="detail-image-wrap" style={activeEvent.imageUrl ? { backgroundImage: `url(${JSON.stringify(activeEvent.imageUrl)})` } : undefined}>
+									{!activeEvent.imageUrl && <Image src={`/event-photos/event-${activeEvent.image}.jpg`} alt={`Students at ${activeEvent.title}`} width={700} height={360}/>}
+								</div>
 								<div className="detail-content">
 									<div className="tag-list"><span className={`category-tag category-${activeEvent.category.toLowerCase()}`}>{activeEvent.category}</span>{activeEvent.price === "Free" && <span className="category-tag category-free">Free</span>}</div>
 									<p className="micro-eyebrow coral-text detail-date">{formatDate(activeEvent.date)}</p>

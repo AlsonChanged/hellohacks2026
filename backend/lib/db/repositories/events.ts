@@ -83,7 +83,7 @@ export type ListPublishedEventsParams = {
 
 const EVENT_LIST_COLUMNS =
   "id,name,organization,description,starts_at,ends_at,has_start_time,timezone,location,registration_url," +
-  "price_label,price_cents,is_free,free_food,tags,popularity_score,source_url," +
+  "price_label,price_cents,is_free,free_food,tags,popularity_score,source_url,image_url," +
   "club:clubs(name,instagram_handle,follower_count)";
 
 export async function listPublishedEvents(params: ListPublishedEventsParams) {
@@ -120,10 +120,11 @@ export async function listPublishedEventData() {
   const db = createAdminClient();
   const { data, error } = await db
     .from("events")
-    .select("name,price_label,starts_at,ends_at,location,description,tags,free_food,popularity_score,source_url,organization")
+    .select("name,price_label,starts_at,ends_at,location,description,tags,free_food,popularity_score,source_url,organization,image_url")
     .eq("status", "published")
+    .gte("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true })
-    // .limit(100);
+    .limit(100);
   if (error) throw error;
   return data ?? [];
 }

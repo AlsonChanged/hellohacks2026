@@ -14,14 +14,18 @@ export function EventCard({ event, compact = false }: EventCardProps) {
 
 	return (
 		<Link className={`event-card ${compact ? "event-card-compact" : ""}`} href={calendarHref} aria-label={`View ${event.title} on the calendar`}>
-			<div className="event-image-wrap">
-				<Image
+			<div
+				className="event-image-wrap"
+				role="img"
+				aria-label={`Image for ${event.title}`}
+				style={event.imageUrl ? { backgroundImage: `url(${JSON.stringify(event.imageUrl)})` } : undefined}
+			>
+				{!event.imageUrl && <Image
 					src={`/event-photos/event-${event.image}.jpg`}
-					alt={`Students at ${event.title}`}
-					width={820}
-					height={360}
+					alt=""
+					fill
 					className="event-image"
-				/>
+				/>}
 			</div>
 			<div className="event-card-body">
 				<div className="event-card-meta">

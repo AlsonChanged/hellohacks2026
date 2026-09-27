@@ -80,21 +80,7 @@ export default function ClubsPage() {
 					{!loading && !loadError && filteredClubs.length > 0 ? (
 						<div className="clubs-grid">
 							{filteredClubs.map((club) => (
-								<article
-									className="club-card club-card-clickable"
-									key={club.name}
-									role="link"
-									tabIndex={0}
-									aria-label={`Visit ${club.name} website`}
-									onClick={() => window.location.assign(`https://example.com/?club=${encodeURIComponent(club.name)}`)}
-									onKeyDown={(event) => {
-										if (event.target !== event.currentTarget) return;
-										if (event.key === "Enter" || event.key === " ") {
-											event.preventDefault();
-											window.location.assign(`https://example.com/?club=${encodeURIComponent(club.name)}`);
-										}
-									}}
-								>
+								<article className="club-card" key={club.id}>
 									<div className="club-card-heading">
 										<span className="club-monogram">{initials(club.name)}</span>
 										<div>
@@ -104,15 +90,14 @@ export default function ClubsPage() {
 									</div>
 									<p>{club.follower_count === null ? "UBC student club" : `${club.follower_count.toLocaleString()} Instagram followers`}</p>
 									<div className="club-card-footer">
-											<span>Official club website</span>
-											<a
-												href={`https://example.com/?club=${encodeURIComponent(club.name)}`}
-											target="_blank"
-											rel="noreferrer"
-											onClick={(event) => event.stopPropagation()}
-										>
-												Visit website ↗
-										</a>
+										<span>{club.website_url ? "Official club website" : "Instagram profile"}</span>
+							<a
+								href={club.website_url ?? `https://www.instagram.com/${encodeURIComponent(club.instagram_handle)}/`}
+								target="_blank"
+								rel="noreferrer"
+							>
+								Visit {club.website_url ? "website" : "Instagram"} ↗
+							</a>
 									</div>
 								</article>
 							))}

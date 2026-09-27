@@ -31,6 +31,7 @@ export default function DiscoverPage() {
 				price: eventPrice(event),
 				description: event.description,
 				image: (index % 6) + 1,
+				imageUrl: event.image_url,
 			};
 		}))).catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Could not load events")).finally(() => setLoading(false));
 	}, []);
@@ -67,7 +68,7 @@ export default function DiscoverPage() {
 							<p className="eyebrow"><span className="eyebrow-dot" /> UPCOMING UBC EVENTS</p>
 							<h1>What’s happening at UBC?</h1>
 							<p className="hero-description">
-								A clearer way to find the talks, workshops, socials, games, and moments that you wouldn't find out about otherwise.
+								A clearer way to find the talks, workshops, socials, games, and moments that you wouldn&apos;t find out about otherwise.
 							</p>
 							<div className="hero-search-row">
 								<SearchBox value={search} onChange={setSearch} />

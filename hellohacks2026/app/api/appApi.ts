@@ -15,7 +15,12 @@ export type PublishedEvent = {
 	free_food: boolean;
 	tags: string[];
 	source_url: string;
+	image_url: string | null;
 	club: { name: string; instagram_handle: string; follower_count: number | null } | null;
+};
+
+export type EventDetails = PublishedEvent & {
+	sources: { id: string; canonical_url: string; caption: string | null; published_at: string | null }[];
 };
 
 export async function fetchEvents(start: Date, end: Date): Promise<PublishedEvent[]> {
@@ -27,6 +32,15 @@ export async function fetchEvents(start: Date, end: Date): Promise<PublishedEven
 	}
 	const payload = await response.json() as { events?: PublishedEvent[] };
 	return payload.events ?? [];
+}
+
+export async function fetchEventDetails(id: string): Promise<EventDetails> {
+	const response = await fetch(`/api/events/${encodeURIComponent(id)}`, { cache: "no-store" });
+	if (!response.ok) {
+		const payload = await response.json().catch(() => null) as { error?: string } | null;
+		throw new Error(payload?.error ?? `Could not load event details (${response.status})`);
+	}
+	return await response.json() as EventDetails;
 }
 
 export function eventCategory(event: PublishedEvent): string {

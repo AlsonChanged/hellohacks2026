@@ -8,6 +8,7 @@ export type EventInfo = {
 	price: string;
 	description: string;
 	image: number;
+	imageUrl?: string | null;
 };
 
 export const discoverEvents: EventInfo[] = [
