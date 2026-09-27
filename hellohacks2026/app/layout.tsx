@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-	title: "Campus Events | UBC",
+	title: "Findr | UBC Events",
 	description: "Find talks, workshops, socials, and campus events from UBC clubs.",
 };
 

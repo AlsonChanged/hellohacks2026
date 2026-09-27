@@ -42,7 +42,7 @@ export default function DiscoverPage() {
 							<p className="eyebrow"><span className="eyebrow-dot" /> FRESH FROM 240+ CLUB FEEDS</p>
 							<h1>What’s happening at UBC?</h1>
 							<p className="hero-description">
-								A clearer way to find the talks, workshops, socials, games, and small campus moments hiding in your Instagram feed.
+								A clearer way to find the talks, workshops, socials, games, and moments that you wouldn't find out about otherwise.
 							</p>
 							<div className="hero-search-row">
 								<SearchBox value={search} onChange={setSearch} />
@@ -101,7 +101,7 @@ export default function DiscoverPage() {
 							<p className="micro-eyebrow coral-text">EDITOR’S PICKS</p>
 							<h2>Worth leaving the library for</h2>
 						</div>
-						<button className="text-link" onClick={resetFilters}>See all featured →</button>
+						<Link className="text-link" href="/calendar">See all featured →</Link>
 					</div>
 					{featuredEvents.length > 0 ? (
 						<div className="featured-grid">
@@ -116,7 +116,7 @@ export default function DiscoverPage() {
 							<p className="micro-eyebrow coral-text">COMING UP</p>
 							<h2>More around campus</h2>
 						</div>
-						<button className="text-link" onClick={resetFilters}>View all 87 events →</button>
+						<Link className="text-link" href="/calendar">View all 87 events →</Link>
 					</div>
 					{upcomingEvents.length > 0 ? (
 						<div className="upcoming-grid">

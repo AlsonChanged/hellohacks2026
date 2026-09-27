@@ -14,9 +14,9 @@ export function SiteHeader({ active }: SiteHeaderProps) {
 
 	return (
 		<header className="site-header">
-			<Link className="brand" href="/" aria-label="Campus Events home">
-				<span className="brand-mark">UBC</span>
-				<span className="brand-name">Campus Events</span>
+			<Link className="brand" href="/" aria-label="Findr home">
+				<span className="brand-mark">F</span>
+				<span className="brand-name">Findr</span>
 			</Link>
 			<nav className="main-nav" aria-label="Main navigation">
 				{links.map((link) => (
@@ -37,10 +37,10 @@ export function SiteFooter() {
 	return (
 		<footer className="site-footer">
 			<Link className="brand footer-brand" href="/">
-				<span className="brand-mark">UBC</span>
-				<span className="brand-name">Campus Events</span>
+				<span className="brand-mark">F</span>
+				<span className="brand-name">Findr</span>
 			</Link>
-			<p>Events gathered from public UBC club posts. Always confirm details with the organizer.</p>
+			<p>Events are scraped from public club postings. Always confirm actual details with event organizers.</p>
 			<div>
 				<Link href="/faq">About</Link>
 			</div>

@@ -3,8 +3,8 @@ import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 
 const questions = [
 	{
-		question: "What is Campus Events?",
-		answer: "Campus Events is a student-facing discovery page that brings UBC club activities into one searchable place. It is a hackathon prototype using sample event and club listings.",
+		question: "What is Findr?",
+		answer: "Findr is a student-facing discovery page that brings UBC club activities into one searchable place. It is a hackathon prototype using sample event and club listings.",
 	},
 	{
 		question: "Where do event details come from?",
@@ -31,7 +31,7 @@ export default function FAQPage() {
 			<main className="faq-page">
 				<div className="faq-heading">
 					<p className="micro-eyebrow coral-text">A QUICK INTRO</p>
-					<h1>How Campus Events works</h1>
+					<h1>How Findr works</h1>
 					<p>One place to discover the campus moments you might otherwise miss.</p>
 				</div>
 				<div className="faq-layout">
@@ -51,7 +51,7 @@ export default function FAQPage() {
 						<h2>Find your next campus moment.</h2>
 						<p>Explore sample UBC events or get to know the clubs putting them on.</p>
 						<div>
-							<Link className="button button-primary" href="/">Explore events</Link>
+							<Link className="button button-primary" href="/calendar">Explore events</Link>
 							<Link className="text-link" href="/clubs">Browse clubs →</Link>
 						</div>
 					</aside>

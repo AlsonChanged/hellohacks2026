@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { EventInfo } from "../../data/events";
 import { CategoryTag } from "./CategoryTag";
 
@@ -8,8 +9,11 @@ type EventCardProps = {
 };
 
 export function EventCard({ event, compact = false }: EventCardProps) {
+	const eventDate = new Date(event.date).toISOString().slice(0, 10);
+	const calendarHref = `/calendar?date=${eventDate}&event=${encodeURIComponent(event.title)}`;
+
 	return (
-		<article className={`event-card ${compact ? "event-card-compact" : ""}`}>
+		<Link className={`event-card ${compact ? "event-card-compact" : ""}`} href={calendarHref} aria-label={`View ${event.title} on the calendar`}>
 			<div className="event-image-wrap">
 				<Image
 					src={`/event-photos/event-${event.image}.jpg`}
@@ -28,9 +32,9 @@ export function EventCard({ event, compact = false }: EventCardProps) {
 					<time>{event.date.toUpperCase()}</time>
 				</div>
 				<h3>{event.title}</h3>
-				<a className="club-link" href="/clubs">
+				<span className="club-link">
 					{event.club}
-				</a>
+				</span>
 				<p className="event-description">{event.description}</p>
 				<div className="event-details">
 					<span><i className="tiny-icon clock-icon" aria-hidden="true" /> {event.time}</span>
@@ -38,6 +42,6 @@ export function EventCard({ event, compact = false }: EventCardProps) {
 					<span><i className="tiny-icon ticket-icon" aria-hidden="true" /> {event.price}</span>
 				</div>
 			</div>
-		</article>
+		</Link>
 	);
 }

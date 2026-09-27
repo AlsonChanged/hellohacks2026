@@ -131,7 +131,21 @@ export default function ClubsPage() {
 					{filteredClubs.length > 0 ? (
 						<div className="clubs-grid">
 							{filteredClubs.map((club) => (
-								<article className="club-card" key={club.name}>
+								<article
+									className="club-card club-card-clickable"
+									key={club.name}
+									role="link"
+									tabIndex={0}
+									aria-label={`Visit ${club.name} website`}
+									onClick={() => window.location.assign(`https://example.com/?club=${encodeURIComponent(club.name)}`)}
+									onKeyDown={(event) => {
+										if (event.target !== event.currentTarget) return;
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											window.location.assign(`https://example.com/?club=${encodeURIComponent(club.name)}`);
+										}
+									}}
+								>
 									<div className="club-card-heading">
 										<span className="club-monogram">{club.initials}</span>
 										<div>
@@ -143,13 +157,14 @@ export default function ClubsPage() {
 									</div>
 									<p>{club.description}</p>
 									<div className="club-card-footer">
-										<span>Sample club listing</span>
-										<a
-											href="https://www.instagram.com/"
+											<span>Official club website</span>
+											<a
+												href={`https://example.com/?club=${encodeURIComponent(club.name)}`}
 											target="_blank"
 											rel="noreferrer"
+											onClick={(event) => event.stopPropagation()}
 										>
-											Instagram placeholder ↗
+												Visit website ↗
 										</a>
 									</div>
 								</article>
